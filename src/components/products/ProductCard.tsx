@@ -67,12 +67,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <button
           onClick={handleWishlistToggle}
-          className="pointer-events-auto w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:scale-105 transition-all shadow-xs"
+          className="pointer-events-auto w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 backdrop-blur-xs border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:scale-105 transition-all shadow-xs"
           title={isWished ? "Remove from wishlist" : "Add to wishlist"}
           aria-label={isWished ? "Remove from wishlist" : "Add to wishlist"}
         >
           <Heart
-            className={`w-4 h-4 ${
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
               isWished ? "fill-rose-500 text-rose-500" : ""
             }`}
           />
@@ -94,11 +94,11 @@ export function ProductCard({ product }: ProductCardProps) {
       </Link>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col p-3.5 sm:p-4">
+      <div className="flex-1 flex flex-col p-3 sm:p-4">
         {/* Brand & Unit */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium mb-1">
-          <span className="truncate max-w-[120px]">{product.brand}</span>
-          <span className="shrink-0 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[10px] font-semibold">
+        <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 font-medium mb-1 gap-1">
+          <span className="truncate max-w-[100px] sm:max-w-[120px]">{product.brand}</span>
+          <span className="shrink-0 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-semibold">
             {product.unit}
           </span>
         </div>
@@ -106,30 +106,30 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Title */}
         <Link
           href={`/products/${product.id}`}
-          className="text-sm font-semibold text-slate-800 hover:text-brand-600 transition-colors line-clamp-2 leading-snug mb-1.5"
+          className="text-xs sm:text-sm font-semibold text-slate-800 hover:text-brand-600 transition-colors line-clamp-2 leading-snug mb-1.5 min-h-[2rem] sm:min-h-[2.5rem]"
         >
           {product.name}
         </Link>
 
         {/* Rating */}
-        <div className="mb-3">
+        <div className="mb-2.5 sm:mb-3">
           <Rating rating={product.rating} count={product.ratingCount} size="sm" />
         </div>
 
         {/* Price & Quantity / Add Button */}
-        <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-bold text-slate-900">
+        <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5 sm:gap-2">
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1 sm:gap-1.5 flex-wrap">
+              <span className="text-sm sm:text-base font-bold text-slate-900">
                 {formatCurrency(product.price)}
               </span>
               {product.originalPrice > product.price && (
-                <span className="text-xs text-slate-400 line-through">
+                <span className="text-[10px] sm:text-xs text-slate-400 line-through">
                   {formatCurrency(product.originalPrice)}
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-emerald-600 font-semibold block">
+            <span className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold block">
               In Stock
             </span>
           </div>
@@ -138,26 +138,26 @@ export function ProductCard({ product }: ProductCardProps) {
           {quantity === 0 ? (
             <button
               onClick={handleAdd}
-              className="h-8 px-3 rounded-xl bg-brand-50 hover:bg-brand-600 text-brand-700 hover:text-white border border-brand-200 hover:border-brand-600 text-xs font-bold transition-all flex items-center gap-1 active:scale-95 shadow-xs"
+              className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-xl bg-brand-50 hover:bg-brand-600 text-brand-700 hover:text-white border border-brand-200 hover:border-brand-600 text-xs font-bold transition-all flex items-center gap-1 active:scale-95 shadow-xs shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add</span>
             </button>
           ) : (
-            <div className="flex items-center rounded-xl bg-brand-600 text-white p-0.5 shadow-sm">
+            <div className="flex items-center rounded-xl bg-brand-600 text-white p-0.5 shadow-sm shrink-0">
               <button
                 onClick={handleDecrease}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-brand-700 active:scale-90 transition-all"
+                className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg hover:bg-brand-700 active:scale-90 transition-all"
                 aria-label="Decrease quantity"
               >
                 <Minus className="w-3 h-3" />
               </button>
-              <span className="w-6 text-center text-xs font-extrabold select-none">
+              <span className="w-5 sm:w-6 text-center text-xs font-extrabold select-none">
                 {quantity}
               </span>
               <button
                 onClick={handleIncrease}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-brand-700 active:scale-90 transition-all"
+                className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg hover:bg-brand-700 active:scale-90 transition-all"
                 aria-label="Increase quantity"
               >
                 <Plus className="w-3 h-3" />

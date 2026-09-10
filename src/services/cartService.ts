@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api";
+import { apiClient, isMockMode } from "@/lib/api";
 import { Cart, CartItem, Product, Coupon } from "@/types";
 import { MOCK_COUPONS } from "@/lib/mockData";
 
@@ -59,22 +59,26 @@ export const cartService = {
   },
 
   async getCart(): Promise<Cart> {
-    const res = await apiClient.get<Cart>("/cart");
-    if (res.success && res.data) {
-      this.saveStoredCart(res.data);
-      return res.data;
+    if (!isMockMode()) {
+      const res = await apiClient.get<Cart>("/cart");
+      if (res.success && res.data) {
+        this.saveStoredCart(res.data);
+        return res.data;
+      }
     }
     return this.getStoredCart();
   },
 
   async addToCart(product: Product, quantity: number = 1): Promise<Cart> {
-    const res = await apiClient.post<Cart>("/cart/items", {
-      productId: product.id,
-      quantity,
-    });
-    if (res.success && res.data) {
-      this.saveStoredCart(res.data);
-      return res.data;
+    if (!isMockMode()) {
+      const res = await apiClient.post<Cart>("/cart/items", {
+        productId: product.id,
+        quantity,
+      });
+      if (res.success && res.data) {
+        this.saveStoredCart(res.data);
+        return res.data;
+      }
     }
 
     // Local fallback
@@ -108,10 +112,12 @@ export const cartService = {
       return this.removeFromCart(itemId);
     }
 
-    const res = await apiClient.put<Cart>(`/cart/items/${itemId}`, { quantity });
-    if (res.success && res.data) {
-      this.saveStoredCart(res.data);
-      return res.data;
+    if (!isMockMode()) {
+      const res = await apiClient.put<Cart>(`/cart/items/${itemId}`, { quantity });
+      if (res.success && res.data) {
+        this.saveStoredCart(res.data);
+        return res.data;
+      }
     }
 
     const current = this.getStoredCart();
@@ -125,10 +131,12 @@ export const cartService = {
   },
 
   async removeFromCart(itemId: string): Promise<Cart> {
-    const res = await apiClient.delete<Cart>(`/cart/items/${itemId}`);
-    if (res.success && res.data) {
-      this.saveStoredCart(res.data);
-      return res.data;
+    if (!isMockMode()) {
+      const res = await apiClient.delete<Cart>(`/cart/items/${itemId}`);
+      if (res.success && res.data) {
+        this.saveStoredCart(res.data);
+        return res.data;
+      }
     }
 
     const current = this.getStoredCart();
@@ -141,17 +149,21 @@ export const cartService = {
   },
 
   async clearCart(): Promise<Cart> {
-    await apiClient.delete("/cart");
+    if (!isMockMode()) {
+      await apiClient.delete("/cart");
+    }
     const emptyCart = calculateCartTotals([]);
     this.saveStoredCart(emptyCart);
     return emptyCart;
   },
 
   async applyCoupon(code: string): Promise<{ cart: Cart; message: string; success: boolean }> {
-    const res = await apiClient.post<{ cart: Cart; message: string }>("/coupons/validate", { code });
-    if (res.success && res.data) {
-      this.saveStoredCart(res.data.cart);
-      return { cart: res.data.cart, message: res.data.message, success: true };
+    if (!isMockMode()) {
+      const res = await apiClient.post<{ cart: Cart; message: string }>("/coupons/validate", { code });
+      if (res.success && res.data) {
+        this.saveStoredCart(res.data.cart);
+        return { cart: res.data.cart, message: res.data.message, success: true };
+      }
     }
 
     const current = this.getStoredCart();

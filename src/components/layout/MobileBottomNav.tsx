@@ -5,11 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Compass, Search, ShoppingBag, User, PackageCheck } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { cart } = useCart();
+  const { isAuthenticated } = useAuth();
 
   const NAV_ITEMS = [
     { label: "Home", href: "/", icon: Home },
@@ -22,11 +24,15 @@ export function MobileBottomNav() {
       icon: ShoppingBag,
       badge: cart.itemCount > 0 ? cart.itemCount : undefined,
     },
-    { label: "Profile", href: "/profile", icon: User },
+    {
+      label: isAuthenticated ? "Profile" : "Account",
+      href: isAuthenticated ? "/profile" : "/login",
+      icon: User,
+    },
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1.5 shadow-lg">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-1 sm:px-2 py-1 shadow-lg">
       <nav aria-label="Mobile Navigation" className="flex items-center justify-around">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
@@ -40,7 +46,7 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all",
+                "relative flex flex-col items-center justify-center py-1 px-1 sm:px-2.5 rounded-xl transition-all",
                 isActive
                   ? "text-brand-600 font-bold"
                   : "text-slate-500 hover:text-slate-900 font-medium"
@@ -54,7 +60,7 @@ export function MobileBottomNav() {
                   </span>
                 )}
               </div>
-              <span className="text-[10px] mt-1">{item.label}</span>
+              <span className="text-[9px] sm:text-[10px] mt-1">{item.label}</span>
             </Link>
           );
         })}

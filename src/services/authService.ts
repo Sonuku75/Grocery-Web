@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api";
+import { apiClient, isMockMode } from "@/lib/api";
 import { AuthResponse, LoginPayload, RegisterPayload, User } from "@/types";
 
 const DEMO_USER: User = {
@@ -14,13 +14,15 @@ const DEMO_USER: User = {
 
 export const authService = {
   async login(payload: LoginPayload): Promise<AuthResponse> {
-    const res = await apiClient.post<AuthResponse>("/auth/login", payload);
-    if (res.success && res.data) {
-      apiClient.setToken(res.data.accessToken);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("cartify_user", JSON.stringify(res.data.user));
+    if (!isMockMode()) {
+      const res = await apiClient.post<AuthResponse>("/auth/login", payload);
+      if (res.success && res.data) {
+        apiClient.setToken(res.data.accessToken);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cartify_user", JSON.stringify(res.data.user));
+        }
+        return res.data;
       }
-      return res.data;
     }
 
     // Fallback demo mock authentication for development testing
@@ -41,13 +43,15 @@ export const authService = {
   },
 
   async register(payload: RegisterPayload): Promise<AuthResponse> {
-    const res = await apiClient.post<AuthResponse>("/auth/register", payload);
-    if (res.success && res.data) {
-      apiClient.setToken(res.data.accessToken);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("cartify_user", JSON.stringify(res.data.user));
+    if (!isMockMode()) {
+      const res = await apiClient.post<AuthResponse>("/auth/register", payload);
+      if (res.success && res.data) {
+        apiClient.setToken(res.data.accessToken);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cartify_user", JSON.stringify(res.data.user));
+        }
+        return res.data;
       }
-      return res.data;
     }
 
     const newUser: User = {
@@ -74,7 +78,9 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    await apiClient.post("/auth/logout");
+    if (!isMockMode()) {
+      await apiClient.post("/auth/logout");
+    }
     apiClient.setToken(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("cartify_user");
@@ -93,23 +99,27 @@ export const authService = {
   },
 
   async getMe(): Promise<User | null> {
-    const res = await apiClient.get<User>("/users/me");
-    if (res.success && res.data) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("cartify_user", JSON.stringify(res.data));
+    if (!isMockMode()) {
+      const res = await apiClient.get<User>("/users/me");
+      if (res.success && res.data) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cartify_user", JSON.stringify(res.data));
+        }
+        return res.data;
       }
-      return res.data;
     }
     return this.getCurrentUser();
   },
 
   async updateMe(userData: Partial<User>): Promise<User> {
-    const res = await apiClient.put<User>("/users/me", userData);
-    if (res.success && res.data) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("cartify_user", JSON.stringify(res.data));
+    if (!isMockMode()) {
+      const res = await apiClient.put<User>("/users/me", userData);
+      if (res.success && res.data) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cartify_user", JSON.stringify(res.data));
+        }
+        return res.data;
       }
-      return res.data;
     }
 
     const current = this.getCurrentUser() || DEMO_USER;

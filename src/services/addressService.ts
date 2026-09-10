@@ -61,9 +61,10 @@ export const addressService = {
     const res = await apiClient.put<Address>(`/addresses/${id}`, input);
     if (res.success && res.data) {
       const current = this.getStoredAddresses();
-      const updated = current.map((a) => (a.id === id ? res.data : a));
+      const updatedAddr = res.data;
+      const updated = current.map((a) => (a.id === id ? updatedAddr : a));
       this.saveStoredAddresses(updated);
-      return res.data;
+      return updatedAddr;
     }
 
     const current = this.getStoredAddresses();

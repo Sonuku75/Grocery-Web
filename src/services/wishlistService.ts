@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api";
+import { apiClient, isMockMode } from "@/lib/api";
 import { Product } from "@/types";
 import { MOCK_PRODUCTS } from "@/lib/mockData";
 
@@ -26,9 +26,11 @@ export const wishlistService = {
   },
 
   async getWishlist(): Promise<Product[]> {
-    const res = await apiClient.get<Product[]>("/wishlist");
-    if (res.success && res.data) {
-      return res.data;
+    if (!isMockMode()) {
+      const res = await apiClient.get<Product[]>("/wishlist");
+      if (res.success && res.data) {
+        return res.data;
+      }
     }
 
     const ids = this.getStoredWishlist();
@@ -36,7 +38,9 @@ export const wishlistService = {
   },
 
   async addToWishlist(productId: string): Promise<string[]> {
-    await apiClient.post("/wishlist", { productId });
+    if (!isMockMode()) {
+      await apiClient.post("/wishlist", { productId });
+    }
     const current = this.getStoredWishlist();
     if (!current.includes(productId)) {
       const updated = [...current, productId];
@@ -47,7 +51,9 @@ export const wishlistService = {
   },
 
   async removeFromWishlist(productId: string): Promise<string[]> {
-    await apiClient.delete(`/wishlist/${productId}`);
+    if (!isMockMode()) {
+      await apiClient.delete(`/wishlist/${productId}`);
+    }
     const current = this.getStoredWishlist();
     const updated = current.filter((id) => id !== productId);
     this.saveStoredWishlist(updated);

@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: cartify_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: cartify
+      POSTGRES_PASSWORD: cartify_secure_pass
+      POSTGRES_DB: cartify_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartify -d cartify_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis In-Memory Cache & Stampede Lock Service
+  redis:
+    image: redis:7-alpine
+    container_name: cartify_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: cartify_postgres_data
+  redis_data:
+    name: cartify_redis_data
