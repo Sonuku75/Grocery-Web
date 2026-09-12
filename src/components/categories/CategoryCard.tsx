@@ -12,12 +12,12 @@ interface CategoryCardProps {
 export function CategoryCard({ category }: CategoryCardProps) {
   return (
     <Link
-      href={`/products?category=${category.id}`}
+      href={`/categories/${category.slug || category.id}`}
       className="group flex flex-col items-center p-3 rounded-2xl bg-white border border-slate-100 shadow-card hover:shadow-card-hover hover:border-brand-200 transition-all duration-200 text-center"
     >
       <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-brand-50/50 mb-3 group-hover:scale-105 transition-transform duration-300">
         <Image
-          src={category.imageUrl}
+          src={category.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80"}
           alt={category.name}
           fill
           className="object-cover"

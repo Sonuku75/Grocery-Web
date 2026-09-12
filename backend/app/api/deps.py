@@ -1,12 +1,22 @@
-from typing import AsyncGenerator, Callable, Optional
-from fastapi import Depends, Header, HTTPException, Request, status
+"""
+Cartify API Dependencies (Module 1)
+
+Provides:
+- Current user authentication from JWT bearer tokens
+- Admin authorization enforcement
+- Multi-client refresh token resolution (cookie or body)
+- Rate limiting dependencies
+"""
+
+from typing import Callable, Optional
+from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_writer
-from app.core.errors import CartifyException
-from app.core.security import decode_access_token
+from app.core.errors import CartifyException, ForbiddenError, UnauthorizedError
+from app.core.security import UserRole, decode_access_token
 from app.models.user import User
 from app.services.rate_limiter import SlidingWindowRateLimiter
 
@@ -16,6 +26,7 @@ async def get_optional_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db_reader),
 ) -> Optional[User]:
+    """Returns authenticated user if a valid bearer token is present, else None."""
     if not token:
         return None
     payload = decode_access_token(token)
@@ -30,6 +41,7 @@ async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db_reader),
 ) -> User:
+    """Enforces valid JWT bearer token and returns active user."""
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -54,6 +66,28 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Verifies that authenticated user is active."""
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated.",
+        )
+    return current_user
+
+async def require_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """Restricts access to administrators only."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative privileges required.",
+        )
+    return current_user
 
 def rate_limit(limit: int = 100, window_seconds: int = 60) -> Callable:
     """

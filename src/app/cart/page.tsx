@@ -144,7 +144,7 @@ export default function CartPage() {
                       {item.product.brand}
                     </span>
                     <Link
-                      href={`/products/${item.product.id}`}
+                      href={`/products/${item.product.slug || item.product.id}`}
                       className="block text-sm font-bold text-slate-900 hover:text-brand-600 transition-colors truncate"
                     >
                       {item.product.name}

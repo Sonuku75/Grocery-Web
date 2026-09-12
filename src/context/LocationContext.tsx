@@ -17,10 +17,10 @@ interface LocationContextType {
 }
 
 const DEFAULT_LOCATION: DeliveryLocation = {
-  city: "San Francisco",
-  area: "Downtown & Mission",
-  pincode: "94107",
-  estimatedDeliveryTime: "14 Mins",
+  city: "Jaipur",
+  area: "Civil Lines & C-Scheme",
+  pincode: "302001",
+  estimatedDeliveryTime: "12 Mins",
 };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);

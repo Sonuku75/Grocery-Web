@@ -38,6 +38,10 @@ class Settings(BaseSettings):
         "DATABASE_URL",
         "postgresql+asyncpg://cartify:cartify_secure_pass@localhost:5432/cartify_db",
     )
+    DATABASE_PRIMARY_URL: str = os.getenv(
+        "DATABASE_PRIMARY_URL",
+        DATABASE_URL,
+    )
     DATABASE_REPLICA_URL: str = os.getenv(
         "DATABASE_REPLICA_URL",
         DATABASE_URL,
@@ -63,17 +67,28 @@ class Settings(BaseSettings):
     CACHE_CATEGORIES_TTL: int = 3600
     CACHE_PRODUCTS_TTL: int = 300
 
-    # Security & Tokens (Foundation for Module 1)
+    # Security & Tokens (Module 1 Authentication)
     SECRET_KEY: str = os.getenv(
         "SECRET_KEY",
         "cartify_insecure_dev_secret_key_change_in_production_2026",
     )
+    JWT_SECRET_KEY: str = os.getenv(
+        "JWT_SECRET_KEY",
+        "cartify_insecure_dev_secret_key_change_in_production_2026",
+    )
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+    PASSWORD_RESET_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "15"))
 
     # Request Timeouts & Limits
     REQUEST_TIMEOUT_SECONDS: float = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "10.0"))
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
+    RATE_LIMIT_LOGIN: int = int(os.getenv("RATE_LIMIT_LOGIN", "10"))
+    RATE_LIMIT_REGISTER: int = int(os.getenv("RATE_LIMIT_REGISTER", "5"))
+    RATE_LIMIT_FORGOT_PASSWORD: int = int(os.getenv("RATE_LIMIT_FORGOT_PASSWORD", "3"))
+    RATE_LIMIT_RESET_PASSWORD: int = int(os.getenv("RATE_LIMIT_RESET_PASSWORD", "5"))
+    COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
 settings = Settings()

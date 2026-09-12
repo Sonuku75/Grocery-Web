@@ -24,6 +24,9 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "@/context/LocationContext";
 import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "@/lib/mockData";
+import { Category } from "@/types";
+import { categoryService } from "@/services/categoryService";
+import { cn } from "@/lib/utils";
 
 export function Header() {
   const router = useRouter();
@@ -37,11 +40,24 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
+  const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false);
+  const [navCategories, setNavCategories] = useState<Category[]>([]);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const categoriesDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close search suggestions on click outside
+  // Load active categories for navigation
+  useEffect(() => {
+    categoryService
+      .getCategories(true)
+      .then((cats) => {
+        setNavCategories(cats.slice(0, 8));
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close search suggestions and dropdowns on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -49,6 +65,9 @@ export function Header() {
       }
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setIsUserDropdownOpen(false);
+      }
+      if (categoriesDropdownRef.current && !categoriesDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoriesDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -135,7 +154,7 @@ export function Header() {
             {/* Location Selector Button */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="hidden lg:flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-left"
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-left"
             >
               <div className="w-7 h-7 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
                 <MapPin className="w-4 h-4" />
@@ -185,7 +204,7 @@ export function Header() {
                         {filteredSuggestions.map((prod) => (
                           <Link
                             key={prod.id}
-                            href={`/products/${prod.id}`}
+                            href={`/products/${prod.slug || prod.id}`}
                             onClick={() => setIsSearchFocused(false)}
                             className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors"
                           >
@@ -235,15 +254,60 @@ export function Header() {
 
           {/* Action Links & User Dropdown */}
           <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
-            {/* Categories link on desktop & laptop */}
-            <div className="relative hidden lg:block">
-              <Link
-                href="/categories"
+            {/* Categories link and dropdown on desktop & laptop */}
+            <div ref={categoriesDropdownRef} className="relative hidden lg:block">
+              <button
+                onClick={() => setIsCategoriesDropdownOpen(!isCategoriesDropdownOpen)}
+                onMouseEnter={() => setIsCategoriesDropdownOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-brand-600 transition-colors"
+                aria-label="Browse categories menu"
               >
                 <Compass className="w-4 h-4 text-brand-600" />
                 <span>Categories</span>
-              </Link>
+                <ChevronDown
+                  className={cn(
+                    "w-3 h-3 text-slate-400 transition-transform duration-200",
+                    isCategoriesDropdownOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {isCategoriesDropdownOpen && (
+                <div
+                  onMouseLeave={() => setIsCategoriesDropdownOpen(false)}
+                  className="absolute left-0 top-full mt-1.5 w-72 bg-white rounded-2xl shadow-dropdown border border-slate-100 p-2 z-50 animate-fade-in"
+                >
+                  <div className="p-2 border-b border-slate-100 mb-1 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      Popular Departments
+                    </span>
+                    <Link
+                      href="/categories"
+                      onClick={() => setIsCategoriesDropdownOpen(false)}
+                      className="text-[11px] font-bold text-brand-600 hover:text-brand-700"
+                    >
+                      View All →
+                    </Link>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto space-y-0.5">
+                    {navCategories.map((cat) => (
+                      <Link
+                        key={cat.id}
+                        href={`/categories/${cat.slug}`}
+                        onClick={() => setIsCategoriesDropdownOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-brand-600 transition-colors"
+                      >
+                        <span>{cat.name}</span>
+                        {cat.subcategories && cat.subcategories.length > 0 && (
+                          <span className="text-[10px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded-md">
+                            {cat.subcategories.length}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Offers Link */}
@@ -359,6 +423,24 @@ export function Header() {
           </div>
         </div>
 
+        {/* Mobile Quick Location Selector Strip (screens < sm) */}
+        <div className="sm:hidden pb-2 pt-0.5 flex items-center justify-between text-xs">
+          <button
+            onClick={() => setIsLocationModalOpen(true)}
+            className="flex items-center gap-1.5 text-slate-800 hover:text-brand-600 transition-colors truncate max-w-[78%]"
+            aria-label="Change delivery location"
+          >
+            <MapPin className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+            <span className="truncate text-[11px] font-medium">
+              Deliver to <strong className="text-slate-900 font-semibold">{location.area}</strong> ({location.pincode})
+            </span>
+            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+          </button>
+          <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full shrink-0">
+            ⚡ {location.estimatedDeliveryTime}
+          </span>
+        </div>
+
         {/* Mobile Search Bar (visible only on phone screen) */}
         <div className="pb-3 md:hidden">
           <form onSubmit={handleSearchSubmit} className="relative">
@@ -407,13 +489,42 @@ export function Header() {
             >
               All Products
             </Link>
-            <Link
-              href="/categories"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg hover:bg-slate-50"
-            >
-              Browse Categories
-            </Link>
+            {/* Mobile Categories Accordion */}
+            <div>
+              <button
+                onClick={() => setIsMobileCategoriesOpen(!isMobileCategoriesOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-700 text-sm font-semibold"
+              >
+                <span>Browse Categories</span>
+                <ChevronDown
+                  className={cn(
+                    "w-4 h-4 text-slate-400 transition-transform duration-200",
+                    isMobileCategoriesOpen && "rotate-180"
+                  )}
+                />
+              </button>
+              {isMobileCategoriesOpen && (
+                <div className="pl-3 pr-1 py-1 space-y-1 text-xs font-medium">
+                  {navCategories.map((cat) => (
+                    <Link
+                      key={cat.id}
+                      href={`/categories/${cat.slug}`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block px-2 py-1.5 rounded-md text-slate-600 hover:text-brand-600 hover:bg-slate-50"
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
+                  <Link
+                    href="/categories"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-2 py-1.5 font-bold text-brand-600 hover:text-brand-700"
+                  >
+                    View All Categories →
+                  </Link>
+                </div>
+              )}
+            </div>
             <Link
               href="/offers"
               onClick={() => setIsMobileMenuOpen(false)}

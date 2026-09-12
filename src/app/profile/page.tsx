@@ -20,6 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
+import { authService } from "@/services/authService";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -31,6 +32,14 @@ export default function ProfilePage() {
   const [mobile, setMobile] = useState(user?.mobile || "+1 (555) 234-5678");
   const [loading, setLoading] = useState(false);
 
+  // Change Password state
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -40,6 +49,43 @@ export default function ProfilePage() {
       showToast("Profile details updated successfully!", "success");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await authService.changePassword({
+        currentPassword,
+        newPassword,
+      });
+
+      if (res.success) {
+        showToast("Password updated successfully!", "success");
+        setIsChangingPassword(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      } else {
+        setPasswordError(res.message);
+      }
+    } catch (err: any) {
+      setPasswordError(err?.message || "Failed to update password.");
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -192,6 +238,91 @@ export default function ProfilePage() {
                     <CheckCircle2 className="w-3.5 h-3.5" /> Verified & Active
                   </span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Security & Password Card */}
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-card space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Security & Password</h3>
+                <p className="text-xs text-slate-500">Manage your account credentials</p>
+              </div>
+              {!isChangingPassword && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<ShieldCheck className="w-3.5 h-3.5" />}
+                  onClick={() => setIsChangingPassword(true)}
+                >
+                  Change Password
+                </Button>
+              )}
+            </div>
+
+            {isChangingPassword ? (
+              <form onSubmit={handleChangePassword} className="space-y-4 max-w-md animate-fade-in">
+                <Input
+                  label="Current Password"
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                />
+                <Input
+                  label="New Password"
+                  type="password"
+                  placeholder="At least 8 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Confirm New Password"
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  required
+                />
+                {passwordError && (
+                  <p className="text-xs font-medium text-rose-500 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                    {passwordError}
+                  </p>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsChangingPassword(false);
+                      setPasswordError(null);
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setConfirmNewPassword("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" isLoading={passwordLoading}>
+                    Update Password
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Password
+                  </span>
+                  <p className="text-sm font-semibold text-slate-800">••••••••••••</p>
+                </div>
+                <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Protected
+                </span>
               </div>
             )}
           </div>

@@ -1,27 +1,9 @@
-from datetime import datetime, timezone
-import uuid
-from sqlalchemy import Column, DateTime, String
-from sqlalchemy.orm import declarative_base, declared_attr
+"""
+Cartify Models Base Re-export
+Ensures app.models.base points directly to app.db.base for single declarative metadata.
+"""
 
-Base = declarative_base()
+from app.db.base import Base, BaseRecord, TimestampMixin, generate_uuid
 
-def generate_uuid() -> str:
-    return str(uuid.uuid4())
+__all__ = ["Base", "BaseRecord", "TimestampMixin", "generate_uuid"]
 
-class TimestampMixin:
-    @declared_attr
-    def created_at(cls):
-        return Column(
-            DateTime(timezone=True),
-            default=lambda: datetime.now(timezone.utc),
-            nullable=False,
-        )
-
-    @declared_attr
-    def updated_at(cls):
-        return Column(
-            DateTime(timezone=True),
-            default=lambda: datetime.now(timezone.utc),
-            onupdate=lambda: datetime.now(timezone.utc),
-            nullable=False,
-        )

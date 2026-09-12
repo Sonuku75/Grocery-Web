@@ -18,10 +18,12 @@ class CartifyException(HTTPException):
         message: str = "An unexpected server error occurred.",
         code: str = "INTERNAL_ERROR",
         details: Optional[Any] = None,
+        detail: Optional[str] = None,
     ):
-        super().__init__(status_code=status_code, detail=message)
+        msg = detail if detail is not None else message
+        super().__init__(status_code=status_code, detail=msg)
         self.code = code
-        self.message = message
+        self.message = msg
         self.details = details
 
 class NotFoundError(CartifyException):

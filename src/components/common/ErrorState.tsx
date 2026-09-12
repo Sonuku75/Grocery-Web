@@ -8,12 +8,14 @@ interface ErrorStateProps {
   title?: string;
   message?: string;
   onRetry?: () => void;
+  retryLabel?: string;
 }
 
 export function ErrorState({
   title = "Something went wrong",
   message = "We could not load the data. Please check your connection and try again.",
   onRetry,
+  retryLabel = "Try Again",
 }: ErrorStateProps) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-rose-50/50 border border-rose-100 max-w-md mx-auto my-6">
@@ -29,7 +31,7 @@ export function ErrorState({
           leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
           onClick={onRetry}
         >
-          Try Again
+          {retryLabel}
         </Button>
       )}
     </div>

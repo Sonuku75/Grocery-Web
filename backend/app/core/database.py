@@ -54,6 +54,8 @@ async def get_db_writer() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
 
+get_db = get_db_writer
+
 async def get_db_reader() -> AsyncGenerator[AsyncSession, None]:
     """Yield a read-only database session pointing to PostgreSQL Read Replica."""
     async with AsyncSessionReplica() as session:

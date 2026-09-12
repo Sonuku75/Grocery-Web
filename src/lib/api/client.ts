@@ -155,6 +155,7 @@ export class ApiClient {
 
       try {
         const response = await fetch(fullUrl, {
+          credentials: "include",
           ...customConfig,
           method,
           headers: requestHeaders,

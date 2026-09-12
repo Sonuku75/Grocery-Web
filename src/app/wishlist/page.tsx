@@ -76,7 +76,7 @@ export default function WishlistPage() {
                     {product.brand}
                   </span>
                   <Link
-                    href={`/products/${product.id}`}
+                    href={`/products/${product.slug || product.id}`}
                     className="block text-xs sm:text-sm font-bold text-slate-800 hover:text-brand-600 transition-colors line-clamp-2 mt-0.5"
                   >
                     {product.name}
