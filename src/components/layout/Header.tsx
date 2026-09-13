@@ -18,15 +18,18 @@ import {
   Compass,
   LogOut,
   MapPinned,
+  Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "@/context/LocationContext";
 import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "@/lib/mockData";
-import { Category } from "@/types";
+import { Category, SearchSuggestion } from "@/types";
 import { categoryService } from "@/services/categoryService";
-import { cn } from "@/lib/utils";
+import { searchService } from "@/services/searchService";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export function Header() {
   const router = useRouter();
@@ -37,6 +40,10 @@ export function Header() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
@@ -46,6 +53,7 @@ export function Header() {
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const categoriesDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Load active categories for navigation
   useEffect(() => {
@@ -56,6 +64,40 @@ export function Header() {
       })
       .catch(() => {});
   }, []);
+
+  // Debounced search suggestion loading (300ms)
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSuggestions([]);
+      setIsLoadingSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchService.getSuggestions(trimmed, 8);
+        setSuggestions(res.items || []);
+      } catch (err) {
+        setSuggestions([]);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Autofocus mobile search input when mobile search drawer opens
+  useEffect(() => {
+    if (isMobileSearchOpen) {
+      setTimeout(() => {
+        mobileSearchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isMobileSearchOpen]);
 
   // Close search suggestions and dropdowns on click outside
   useEffect(() => {
@@ -77,10 +119,50 @@ export function Header() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearchFocused(false);
+    setIsMobileSearchOpen(false);
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     } else {
       router.push("/search");
+    }
+  };
+
+  const handleSelectSuggestion = (item: SearchSuggestion) => {
+    setIsSearchFocused(false);
+    setIsMobileSearchOpen(false);
+    setSelectedSuggestionIndex(-1);
+    if (item.type === "product") {
+      router.push(`/products/${item.slug || item.id}`);
+    } else if (item.type === "brand") {
+      router.push(`/search?q=${encodeURIComponent(item.label)}&brand=${encodeURIComponent(item.label)}`);
+    } else if (item.type === "category") {
+      router.push(`/categories/${item.slug || item.id}`);
+    }
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!isSearchFocused && !isMobileSearchOpen) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedSuggestionIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === "Escape") {
+      setIsSearchFocused(false);
+      setIsMobileSearchOpen(false);
+      setSelectedSuggestionIndex(-1);
+    } else if (
+      e.key === "Enter" &&
+      selectedSuggestionIndex >= 0 &&
+      selectedSuggestionIndex < suggestions.length
+    ) {
+      e.preventDefault();
+      handleSelectSuggestion(suggestions[selectedSuggestionIndex]);
     }
   };
 
@@ -91,13 +173,6 @@ export function Header() {
       setIsUserDropdownOpen(!isUserDropdownOpen);
     }
   };
-
-  const filteredSuggestions = searchQuery.trim()
-    ? MOCK_PRODUCTS.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.brand.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5)
-    : [];
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
@@ -179,10 +254,14 @@ export function Header() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Search for organic milk, fresh avocados, sourdough..."
                 className="w-full h-11 pl-11 pr-24 rounded-2xl bg-slate-100/80 border border-slate-200/80 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none transition-all shadow-xs"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              {isLoadingSuggestions && (
+                <Loader2 className="w-4 h-4 text-brand-600 animate-spin absolute right-24 top-1/2 -translate-y-1/2" />
+              )}
               <button
                 type="submit"
                 className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition-colors flex items-center gap-1"
@@ -196,43 +275,86 @@ export function Header() {
               <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-dropdown border border-slate-100 p-3 z-50 animate-fade-in">
                 {searchQuery.trim().length > 0 ? (
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
-                      Product Matches
-                    </p>
-                    {filteredSuggestions.length > 0 ? (
-                      <div className="space-y-1 mt-1">
-                        {filteredSuggestions.map((prod) => (
-                          <Link
-                            key={prod.id}
-                            href={`/products/${prod.slug || prod.id}`}
-                            onClick={() => setIsSearchFocused(false)}
-                            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors"
+                    {isLoadingSuggestions && suggestions.length === 0 ? (
+                      <div className="flex items-center gap-2 p-3 text-xs text-slate-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-600" />
+                        <span>Searching catalog...</span>
+                      </div>
+                    ) : suggestions.length > 0 ? (
+                      <div className="space-y-1 max-h-80 overflow-y-auto">
+                        {suggestions.map((item, idx) => (
+                          <button
+                            key={`${item.type}-${item.label}-${idx}`}
+                            onClick={() => handleSelectSuggestion(item)}
+                            className={cn(
+                              "w-full flex items-center justify-between p-2 rounded-xl text-left transition-colors",
+                              selectedSuggestionIndex === idx
+                                ? "bg-brand-50 text-brand-900"
+                                : "hover:bg-slate-50 text-slate-700"
+                            )}
                           >
-                            <div className="flex items-center gap-2.5">
-                              <Search className="w-3.5 h-3.5 text-slate-400" />
-                              <span className="text-sm font-medium text-slate-700">
-                                {prod.name}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {item.type === "product" && (
+                                <div className="w-7 h-7 rounded-lg bg-slate-100 shrink-0 overflow-hidden flex items-center justify-center">
+                                  {item.imageUrl ? (
+                                    <img
+                                      src={item.imageUrl}
+                                      alt={item.label}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Search className="w-3.5 h-3.5 text-slate-400" />
+                                  )}
+                                </div>
+                              )}
+                              {item.type === "brand" && (
+                                <div className="w-7 h-7 rounded-lg bg-accent-50 text-accent-600 shrink-0 flex items-center justify-center">
+                                  <Tag className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                              {item.type === "category" && (
+                                <div className="w-7 h-7 rounded-lg bg-brand-50 text-brand-600 shrink-0 flex items-center justify-center">
+                                  <Compass className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                              <span className="text-sm font-medium truncate">
+                                {item.label}
                               </span>
                             </div>
-                            <span className="text-xs font-semibold text-brand-600">
-                              ${prod.price.toFixed(2)}
-                            </span>
-                          </Link>
+
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              {item.type === "product" && item.price !== undefined && (
+                                <span className="text-xs font-semibold text-brand-600">
+                                  {formatCurrency(item.price)}
+                                </span>
+                              )}
+                              {item.type === "brand" && (
+                                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                                  Brand
+                                </span>
+                              )}
+                              {item.type === "category" && (
+                                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-brand-50 text-brand-600">
+                                  Category
+                                </span>
+                              )}
+                            </div>
+                          </button>
                         ))}
                       </div>
                     ) : (
                       <p className="text-xs text-slate-500 p-2">
-                        No immediate matches. Press Enter to search catalog.
+                        No immediate suggestions for &ldquo;{searchQuery}&rdquo;. Press Enter to search full catalog.
                       </p>
                     )}
                   </div>
                 ) : (
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
-                      Trending Searches
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-accent-500" /> Trending Searches
                     </p>
-                    <div className="flex flex-wrap gap-1.5 p-1">
-                      {["Organic Avocados", "Whole Milk", "Brown Eggs", "Sourdough", "Salmon"].map((trend) => (
+                    <div className="flex flex-wrap gap-1.5 p-1 mt-1">
+                      {["Organic Avocados", "Whole Milk", "Brown Eggs", "Sourdough", "Olive Oil", "Strawberries"].map((trend) => (
                         <button
                           key={trend}
                           onClick={() => {
@@ -417,7 +539,7 @@ export function Header() {
                 )}
               </div>
               <span className="text-xs font-bold hidden sm:inline">
-                ${cart.subtotal.toFixed(2)}
+                {formatCurrency(cart.subtotal)}
               </span>
             </Link>
           </div>
@@ -443,16 +565,15 @@ export function Header() {
 
         {/* Mobile Search Bar (visible only on phone screen) */}
         <div className="pb-3 md:hidden">
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search groceries & essentials..."
-              className="w-full h-10 pl-9 pr-4 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-500"
-            />
+          <div
+            onClick={() => setIsMobileSearchOpen(true)}
+            className="w-full h-10 pl-9 pr-4 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-500 flex items-center relative cursor-pointer"
+          >
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </form>
+            <span className="truncate">
+              {searchQuery ? searchQuery : "Search groceries & essentials..."}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -571,6 +692,152 @@ export function Header() {
             >
               {isAuthenticated ? "Account Settings" : "Sign In / Register"}
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Dedicated Search Full-Width Drawer */}
+      {isMobileSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col md:hidden animate-fade-in">
+          {/* Header bar */}
+          <div className="p-3 border-b border-slate-100 flex items-center gap-2 bg-white">
+            <button
+              onClick={() => {
+                setIsMobileSearchOpen(false);
+                setSelectedSuggestionIndex(-1);
+              }}
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+              aria-label="Close search"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+
+            <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+              <input
+                ref={mobileSearchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search groceries & essentials..."
+                className="w-full h-11 pl-10 pr-9 rounded-2xl bg-slate-100 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none transition-all"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="w-7 h-7 absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 hover:text-slate-600"
+                  aria-label="Clear search query"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </form>
+          </div>
+
+          {/* Body suggestions / trending list */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {isLoadingSuggestions && suggestions.length === 0 ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-sm text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
+                <span>Searching catalog...</span>
+              </div>
+            ) : suggestions.length > 0 ? (
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
+                  Suggestions
+                </p>
+                {suggestions.map((item, idx) => (
+                  <button
+                    key={`mob-${item.type}-${item.label}-${idx}`}
+                    onClick={() => handleSelectSuggestion(item)}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100 transition-colors border border-transparent hover:border-slate-100"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.type === "product" && (
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 shrink-0 overflow-hidden flex items-center justify-center">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.label}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Search className="w-4 h-4 text-slate-400" />
+                          )}
+                        </div>
+                      )}
+                      {item.type === "brand" && (
+                        <div className="w-9 h-9 rounded-xl bg-accent-50 text-accent-600 shrink-0 flex items-center justify-center">
+                          <Tag className="w-4 h-4" />
+                        </div>
+                      )}
+                      {item.type === "category" && (
+                        <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 shrink-0 flex items-center justify-center">
+                          <Compass className="w-4 h-4" />
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-slate-800 truncate">
+                        {item.label}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {item.type === "product" && item.price !== undefined && (
+                        <span className="text-xs font-semibold text-brand-600">
+                          {formatCurrency(item.price)}
+                        </span>
+                      )}
+                      {item.type === "brand" && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                          Brand
+                        </span>
+                      )}
+                      {item.type === "category" && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-brand-50 text-brand-600">
+                          Category
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : searchQuery.trim() ? (
+              <div className="text-center py-12 px-4 text-slate-500">
+                <p className="text-sm font-medium mb-1">No instant suggestions</p>
+                <p className="text-xs text-slate-400 mb-4">
+                  Press Enter to search all departments for &ldquo;{searchQuery}&rdquo;
+                </p>
+                <button
+                  onClick={handleSearchSubmit}
+                  className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold shadow-sm"
+                >
+                  Search Catalog
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-accent-500" /> Trending Groceries
+                </p>
+                <div className="flex flex-wrap gap-2 p-1 mt-2">
+                  {["Organic Avocados", "Whole Milk", "Brown Eggs", "Sourdough Bread", "Olive Oil", "Strawberries", "Paneer", "Bananas"].map((trend) => (
+                    <button
+                      key={trend}
+                      onClick={() => {
+                        setSearchQuery(trend);
+                        router.push(`/search?q=${encodeURIComponent(trend)}`);
+                        setIsMobileSearchOpen(false);
+                      }}
+                      className="text-xs font-medium bg-slate-100 hover:bg-brand-50 hover:text-brand-700 px-3.5 py-2 rounded-xl text-slate-700 transition-colors"
+                    >
+                      {trend}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

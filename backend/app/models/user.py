@@ -35,6 +35,31 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    wishlist_items = relationship(
+        "WishlistItem",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    cart = relationship(
+        "Cart",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    checkout_sessions = relationship(
+        "CheckoutSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    orders = relationship(
+        "Order",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         Index("idx_users_email_active", "email", "is_active"),

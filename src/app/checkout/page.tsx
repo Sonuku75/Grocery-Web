@@ -4,10 +4,12 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, PaymentMethod } from "@/types";
+import { Address, CheckoutConfirmResponse, CheckoutSummary } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { addressService } from "@/services/addressService";
+import { checkoutService } from "@/services/checkoutService";
 import { orderService } from "@/services/orderService";
 import { AddressModal } from "@/components/addresses/AddressModal";
 import { Button } from "@/components/common/Button";
@@ -16,502 +18,853 @@ import { formatCurrency } from "@/lib/utils";
 import {
   MapPin,
   Clock,
-  CreditCard,
   CheckCircle2,
   Plus,
   ArrowRight,
   ShieldCheck,
-  Building,
-  Home,
-  QrCode,
-  Banknote,
+  AlertTriangle,
+  ChevronRight,
+  Check,
+  Truck,
+  Lock,
+  Sparkles,
+  PackageCheck,
+  ShoppingBag,
+  RefreshCw,
+  Copy,
 } from "lucide-react";
-import { useToast } from "@/context/ToastContext";
+
+const DELIVERY_SLOTS = [
+  {
+    id: "express-15",
+    title: "Express 15-Minute Delivery",
+    time: "⚡ Instant Dispatch • Arriving in 10-15 mins",
+    badge: "Fastest",
+  },
+  {
+    id: "today-morning",
+    title: "Today Morning",
+    time: "7:00 AM – 9:00 AM",
+    badge: "Eco Saver",
+  },
+  {
+    id: "today-afternoon",
+    title: "Today Afternoon",
+    time: "1:00 PM – 3:00 PM",
+    badge: null,
+  },
+  {
+    id: "today-evening",
+    title: "Today Evening",
+    time: "6:00 PM – 8:00 PM",
+    badge: "Popular",
+  },
+  {
+    id: "tomorrow-morning",
+    title: "Tomorrow Morning",
+    time: "7:00 AM – 9:00 AM",
+    badge: null,
+  },
+];
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, clearCart } = useCart();
-  const { user } = useAuth();
+  const { cart, refreshCart } = useCart();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { showToast } = useToast();
 
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [checkoutSummary, setCheckoutSummary] = useState<CheckoutSummary | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-
   const [deliverySlot, setDeliverySlot] = useState("Today • Express 15-Minute Delivery");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [notes, setNotes] = useState("");
 
-  // Payment mock card details
-  const [cardNumber, setCardNumber] = useState("4242 •••• •••• 4242");
-  const [cardExpiry, setCardExpiry] = useState("12/28");
-  const [cardCvv, setCardCvv] = useState("888");
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isSwitchAddressOpen, setIsSwitchAddressOpen] = useState(false);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmedData, setConfirmedData] = useState<CheckoutConfirmResponse | null>(null);
+  const [copiedSessionId, setCopiedSessionId] = useState(false);
 
+  // 1. Initial Data Fetching & Authorization
   useEffect(() => {
-    async function loadAddresses() {
-      const addrs = await addressService.getAddresses();
-      setAddresses(addrs);
-      const defaultAddr = addrs.find((a) => a.isDefault) || addrs[0];
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.id);
-      }
-    }
-    loadAddresses();
-  }, []);
+    if (authLoading) return;
 
-  const selectedAddress = addresses.find((a) => a.id === selectedAddressId) || addresses[0];
-
-  const handleCreateAddress = async (data: Parameters<typeof addressService.addAddress>[0]) => {
-    const created = await addressService.addAddress(data);
-    setAddresses((prev) => [created, ...prev]);
-    setSelectedAddressId(created.id);
-    showToast("Delivery address added!", "success");
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
-      showToast("Please select or add a delivery address", "error");
-      setCurrentStep(1);
+    if (!isAuthenticated) {
+      router.push("/login?redirect=/checkout");
       return;
     }
 
-    setLoading(true);
-    try {
-      const orderItems = cart.items.map((item) => ({
-        id: "oi-" + Math.random().toString(36).substring(2, 8),
-        productId: item.productId,
-        productName: item.product.name,
-        productImage: item.product.images[0],
-        unitPrice: item.product.price,
-        quantity: item.quantity,
-        totalPrice: item.product.price * item.quantity,
-        unit: item.product.unit,
-      }));
+    async function initializeCheckout() {
+      setLoading(true);
+      try {
+        // Load user delivery addresses
+        const addrs = await addressService.getAddresses();
+        setAddresses(addrs);
+        const defaultAddr = addrs.find((a) => a.isDefault || a.is_default) || addrs[0];
+        const initialAddrId = defaultAddr?.id || "";
+        setSelectedAddressId(initialAddrId);
 
-      const newOrder = await orderService.createOrder({
-        userId: user?.id || "usr-demo",
-        address: selectedAddress,
-        items: orderItems,
-        subtotal: cart.subtotal,
-        discount: cart.discount,
-        deliveryFee: cart.deliveryFee,
-        tax: cart.tax,
-        total: cart.total,
-        paymentMethod,
-        paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
+        // Fetch authoritative checkout preview
+        if (cart.items.length > 0) {
+          const preview = await checkoutService.previewCheckout({
+            addressId: initialAddrId || undefined,
+            deliverySlot,
+          });
+          setCheckoutSummary(preview);
+        }
+      } catch (err: any) {
+        console.error("Failed to initialize checkout preview", err);
+        showToast(
+          err?.message || "Failed to load checkout session. Please try again.",
+          "error"
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    initializeCheckout();
+  }, [isAuthenticated, authLoading, cart.items.length]);
+
+  // 2. Handle Address Change
+  const handleSelectAddress = async (addrId: string) => {
+    setSelectedAddressId(addrId);
+    setIsSwitchAddressOpen(false);
+    try {
+      const updated = await checkoutService.previewCheckout({
+        addressId: addrId,
         deliverySlot,
       });
-
-      await clearCart();
-      showToast("Order placed successfully!", "success");
-      router.push(`/order-confirmation/${newOrder.id}`);
-    } catch (err) {
-      showToast("Failed to place order. Please try again.", "error");
-    } finally {
-      setLoading(false);
+      setCheckoutSummary(updated);
+      showToast("Delivery address updated for checkout", "success");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to update address", "error");
     }
   };
 
-  if (cart.items.length === 0) {
+  // 3. Handle Create Address
+  const handleCreateAddress = async (data: Parameters<typeof addressService.addAddress>[0]) => {
+    try {
+      const created = await addressService.addAddress(data);
+      setAddresses((prev) => [created, ...prev]);
+      setSelectedAddressId(created.id);
+      setIsAddressModalOpen(false);
+
+      const updated = await checkoutService.previewCheckout({
+        addressId: created.id,
+        deliverySlot,
+      });
+      setCheckoutSummary(updated);
+      showToast("Address saved and attached to checkout", "success");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to save address", "error");
+    }
+  };
+
+  // 4. Handle Delivery Slot Change
+  const handleSelectSlot = async (slotTitle: string) => {
+    setDeliverySlot(slotTitle);
+    try {
+      const updated = await checkoutService.previewCheckout({
+        addressId: selectedAddressId || undefined,
+        deliverySlot: slotTitle,
+      });
+      setCheckoutSummary(updated);
+    } catch (err) {
+      console.warn("Could not sync slot change immediately", err);
+    }
+  };
+
+  // 5. Handle Confirm Checkout (Idempotent handoff to Module 10)
+  const handleConfirmCheckout = async () => {
+    if (!checkoutSummary) {
+      showToast("Checkout session not ready", "error");
+      return;
+    }
+
+    if (!selectedAddressId && !checkoutSummary.address) {
+      showToast("Please select or add a delivery address to proceed", "error");
+      setIsSwitchAddressOpen(true);
+      return;
+    }
+
+    if (confirming) return; // double-click protection
+
+    setConfirming(true);
+    try {
+      // Generate a unique idempotency key for this confirmation attempt
+      const idempotencyKey =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "idem-" + Date.now() + "-" + Math.random().toString(36).substring(2, 7);
+
+      const result = await checkoutService.confirmCheckout(
+        {
+          checkoutSessionId: checkoutSummary.id,
+          deliverySlot,
+          notes: notes.trim() || undefined,
+        },
+        idempotencyKey
+      );
+
+      setConfirmedData(result);
+
+      // Module 10: Seamlessly convert confirmed checkout session to an authoritative Order
+      try {
+        const placedOrder = await orderService.createOrder(
+          {
+            checkoutSessionId: checkoutSummary.id,
+            notes: notes.trim() || undefined,
+          },
+          idempotencyKey
+        );
+        if (refreshCart) {
+          await refreshCart();
+        }
+        showToast(`Order #${placedOrder.orderNumber} placed successfully!`, "success");
+        router.push(`/orders/${placedOrder.orderNumber || placedOrder.id}`);
+        return;
+      } catch (orderErr: any) {
+        console.warn("Direct order routing fallback:", orderErr);
+        showToast("Checkout locked! Click below to view and track your order.", "success");
+      }
+    } catch (err: any) {
+      console.error("Confirmation error:", err);
+      showToast(
+        err?.message || "Failed to confirm checkout. Please refresh and try again.",
+        "error"
+      );
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleCopySessionId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedSessionId(true);
+    showToast("Session ID copied to clipboard", "info");
+    setTimeout(() => setCopiedSessionId(false), 2500);
+  };
+
+  const selectedAddress =
+    addresses.find((a) => a.id === selectedAddressId) ||
+    (checkoutSummary?.address ? (checkoutSummary.address as unknown as Address) : null);
+
+  // Free delivery progress calculation
+  const subtotal = checkoutSummary?.subtotal ?? cart.subtotal;
+  const freeThreshold = 499;
+  const amountNeeded = Math.max(0, freeThreshold - subtotal);
+  const freeProgress = Math.min(100, Math.round((subtotal / freeThreshold) * 100));
+
+  // Loading State
+  if (authLoading || (loading && !checkoutSummary)) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Your Cart is Empty</h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Add fresh produce and essentials to proceed through checkout.
-        </p>
-        <Link href="/products">
-          <Button variant="primary">Shop Products</Button>
-        </Link>
+      <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 py-16">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 animate-pulse mb-6">
+            <RefreshCw className="w-8 h-8 animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Preparing Express Checkout...
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">
+            Verifying live catalog prices, inventory availability, and delivery routes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Confirmation Handoff State (READY_FOR_ORDER)
+  if (confirmedData) {
+    const summary = confirmedData.summary;
+    return (
+      <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl overflow-hidden p-8 sm:p-10 text-center">
+            {/* Animated Checkmark Badge */}
+            <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-emerald-50/60 dark:ring-emerald-950/20">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-semibold tracking-wide uppercase mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              Checkout Complete • Ready for Order
+            </div>
+
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Checkout Confirmed &amp; Locked
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm sm:text-base max-w-lg mx-auto">
+              Your cart items, delivery address, and authoritative totals have been verified and reserved.
+            </p>
+
+            {/* Session Reference ID */}
+            <div className="mt-6 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-4 flex items-center justify-between">
+              <div className="text-left">
+                <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">
+                  Checkout Session ID
+                </span>
+                <span className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200">
+                  {confirmedData.checkoutSessionId}
+                </span>
+              </div>
+              <button
+                onClick={() => handleCopySessionId(confirmedData.checkoutSessionId)}
+                className="p-2 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                title="Copy Session ID"
+              >
+                {copiedSessionId ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
+              </button>
+            </div>
+
+            {/* Order Readiness Card */}
+            <div className="mt-6 text-left border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl p-5 space-y-3.5">
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    Deliver To ({summary.address?.label || "Home"})
+                  </div>
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {summary.address?.recipientName} • {summary.address?.phone}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {summary.address?.addressLine1}, {summary.address?.city}, {summary.address?.postalCode}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                <Clock className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    Selected Delivery Slot
+                  </div>
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {summary.deliverySlot || "Today • Express 15-Minute Delivery"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                <div>
+                  <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    Total Payable
+                  </div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">
+                    {formatCurrency(summary.total)}
+                  </div>
+                </div>
+                <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+                  {summary.items.length} {summary.items.length === 1 ? "item" : "items"} reserved
+                </div>
+              </div>
+            </div>
+
+            {/* Module 10 Order Active Alert */}
+            <div className="mt-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 text-left flex items-start gap-3">
+              <PackageCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                <strong>Module 10 (Orders &amp; Order Management) Active:</strong> Your order is created and locked with immutable purchase snapshots. You can track real-time delivery status, view invoices, or manage your order anytime.
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/orders"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <PackageCheck className="w-4 h-4" />
+                View &amp; Track My Orders
+              </Link>
+              <Link
+                href="/"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-sm transition flex items-center justify-center gap-2"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Continue Shopping
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty Cart State
+  if (cart.items.length === 0 && (!checkoutSummary || checkoutSummary.items.length === 0)) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center py-12">
+          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShoppingBag className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Your Cart is Empty
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
+            Add your daily essentials and fresh groceries to initiate checkout.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition shadow-sm"
+            >
+              Explore Products
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-      <Breadcrumb
-        items={[
-          { label: "Cart", href: "/cart" },
-          { label: "Checkout" },
-        ]}
-      />
-
-      {/* Stepper Progress Header */}
-      <div className="max-w-3xl mx-auto">
-        <div className="grid grid-cols-4 gap-2 text-center text-xs font-bold">
-          {[
-            { step: 1, title: "1. Address" },
-            { step: 2, title: "2. Slot" },
-            { step: 3, title: "3. Payment" },
-            { step: 4, title: "4. Review" },
-          ].map((s) => (
-            <button
-              key={s.step}
-              onClick={() => setCurrentStep(s.step as 1 | 2 | 3 | 4)}
-              className={`p-3 rounded-2xl border transition-all ${
-                currentStep === s.step
-                  ? "border-brand-600 bg-brand-50 text-brand-700 shadow-xs"
-                  : currentStep > s.step
-                  ? "border-slate-200 bg-slate-50 text-slate-700"
-                  : "border-slate-100 text-slate-400 opacity-60"
-              }`}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Interactive Step Box */}
-        <div className="lg:col-span-8 bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-card space-y-6">
-          {/* STEP 1: ADDRESS */}
-          {currentStep === 1 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Select Delivery Address</h2>
-                  <p className="text-xs text-slate-500">Choose where we should deliver your order</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  leftIcon={<Plus className="w-3.5 h-3.5" />}
-                  onClick={() => setIsAddressModalOpen(true)}
-                >
-                  Add Address
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {addresses.map((addr) => (
-                  <div
-                    key={addr.id}
-                    onClick={() => setSelectedAddressId(addr.id)}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                      selectedAddressId === addr.id
-                        ? "border-brand-600 bg-brand-50/40 shadow-xs"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="flex items-center gap-1.5 text-xs font-bold capitalize text-slate-800">
-                        {addr.addressType === "home" ? (
-                          <Home className="w-3.5 h-3.5 text-brand-600" />
-                        ) : (
-                          <Building className="w-3.5 h-3.5 text-brand-600" />
-                        )}
-                        {addr.addressType}
-                      </span>
-                      {selectedAddressId === addr.id && (
-                        <CheckCircle2 className="w-4 h-4 text-brand-600" />
-                      )}
-                    </div>
-                    <p className="text-xs font-bold text-slate-900">{addr.fullName}</p>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                      {addr.houseFlat}, {addr.street}, {addr.area}, {addr.city} {addr.pincode}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-2 font-medium">{addr.mobile}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 flex justify-end">
-                <Button
-                  variant="primary"
-                  onClick={() => setCurrentStep(2)}
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
-                >
-                  Continue to Delivery Slot
-                </Button>
-              </div>
+    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950 pb-20 pt-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Breadcrumb & Title */}
+        <div className="mb-8">
+          <Breadcrumb
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Cart", href: "/cart" },
+              { label: "Express Checkout" },
+            ]}
+          />
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Express Checkout
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                Review your items, choose delivery slot, and verify order totals.
+              </p>
             </div>
-          )}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+              <ShieldCheck className="w-4 h-4" />
+              Authoritative Server Pricing Locked
+            </div>
+          </div>
+        </div>
 
-          {/* STEP 2: DELIVERY SLOT */}
-          {currentStep === 2 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="pb-3 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-900">Choose Delivery Speed</h2>
-                <p className="text-xs text-slate-500">Select when you want your groceries delivered</p>
+        {/* Price Change Warning Alert */}
+        {checkoutSummary?.priceChanged && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <span className="font-semibold block">Live Price Update Detected</span>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                {checkoutSummary.warningMessage ||
+                  "One or more item prices have updated to current catalog rates."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Main 2-Column Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Details & Selections */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* 1. Delivery Address Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                    1
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                    Delivery Address
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {addresses.length > 0 && (
+                    <button
+                      onClick={() => setIsSwitchAddressOpen(true)}
+                      className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 px-3 py-1.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition"
+                    >
+                      Change Address
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    New
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {[
-                  {
-                    id: "express",
-                    title: "Today • Express 15-Minute Delivery",
-                    desc: "Handpicked & dispatched immediately via electric courier",
-                    tag: "⚡ Recommended",
-                  },
-                  {
-                    id: "today-evening",
-                    title: "Today • Evening Slot (5:00 PM - 6:00 PM)",
-                    desc: "Delivered fresh after work hours",
-                  },
-                  {
-                    id: "tomorrow-morning",
-                    title: "Tomorrow Morning (8:00 AM - 9:00 AM)",
-                    desc: "Fresh morning sourdough, eggs & cold milk for breakfast",
-                  },
-                ].map((slot) => (
-                  <div
-                    key={slot.id}
-                    onClick={() => setDeliverySlot(slot.title)}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                      deliverySlot === slot.title
-                        ? "border-brand-600 bg-brand-50/40 shadow-xs"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
+              {selectedAddress ? (
+                <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300">
+                        {selectedAddress.label || selectedAddress.addressType || "Home"}
+                      </span>
+                      <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                        {selectedAddress.fullName || selectedAddress.recipientName}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        • {selectedAddress.mobile || selectedAddress.phone}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {selectedAddress.houseFlat || selectedAddress.addressLine1},{" "}
+                      {selectedAddress.street || selectedAddress.addressLine2 ? `${selectedAddress.street || selectedAddress.addressLine2}, ` : ""}
+                      {selectedAddress.city}, {selectedAddress.state} – {selectedAddress.pincode || selectedAddress.postalCode}
+                    </p>
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4" />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center">
+                  <MapPin className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    No delivery address selected
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3">
+                    Add or select an address to enable delivery calculation.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="gap-1.5"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-slate-900">{slot.title}</h4>
-                        {slot.tag && (
-                          <span className="text-[10px] font-bold text-accent-700 bg-accent-100 px-2 py-0.5 rounded-full">
-                            {slot.tag}
+                    <Plus className="w-4 h-4" />
+                    Add Delivery Address
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Delivery Slot Selection Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                  2
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                    Delivery Schedule
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Choose when you want your groceries delivered
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {DELIVERY_SLOTS.map((slot) => {
+                  const isSelected = deliverySlot === slot.title;
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => handleSelectSlot(slot.title)}
+                      className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/20 ring-1 ring-emerald-600"
+                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {slot.title}
+                        </span>
+                        {slot.badge && (
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                            {slot.badge}
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500">{slot.desc}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {slot.time}
+                      </p>
                     </div>
-                    {deliverySlot === slot.title && (
-                      <CheckCircle2 className="w-5 h-5 text-brand-600 shrink-0" />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 flex justify-between">
-                <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                  Back
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => setCurrentStep(3)}
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
-                >
-                  Continue to Payment
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: PAYMENT METHOD */}
-          {currentStep === 3 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="pb-3 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-900">Select Payment Method</h2>
-                <p className="text-xs text-slate-500">All transactions are encrypted and 100% secure</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { id: "card" as PaymentMethod, name: "Credit / Debit Card", icon: CreditCard },
-                  { id: "upi" as PaymentMethod, name: "Instant UPI / QR", icon: QrCode },
-                  { id: "cod" as PaymentMethod, name: "Cash on Delivery", icon: Banknote },
-                ].map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(m.id)}
-                      className={`p-4 rounded-2xl border-2 flex flex-col items-center text-center gap-2 transition-all ${
-                        paymentMethod === m.id
-                          ? "border-brand-600 bg-brand-50/50 text-brand-700 font-bold"
-                          : "border-slate-200 text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      <Icon className="w-6 h-6" />
-                      <span className="text-xs">{m.name}</span>
-                    </button>
                   );
                 })}
               </div>
 
-              {paymentMethod === "card" && (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 mt-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                      Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                        CVV / CVC
-                      </label>
-                      <input
-                        type="password"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                        className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === "upi" && (
-                <div className="p-4 rounded-2xl bg-brand-50/40 border border-brand-200 text-center space-y-2 mt-4">
-                  <p className="text-xs font-bold text-brand-900">Pay using your preferred UPI app</p>
-                  <p className="text-[11px] text-slate-500">
-                    Google Pay, PhonePe, Paytm, or BHIM. A secure payment prompt will be issued upon placing order.
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "cod" && (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 mt-4 text-xs text-slate-600">
-                  <p className="font-bold text-slate-800">Cash / UPI on Delivery</p>
-                  <p>You can pay via cash or scan rider&apos;s QR code when the order arrives at your door.</p>
-                </div>
-              )}
-
-              <div className="pt-4 flex justify-between">
-                <Button variant="outline" onClick={() => setCurrentStep(2)}>
-                  Back
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => setCurrentStep(4)}
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
-                >
-                  Review Order
-                </Button>
+              {/* Delivery Instructions */}
+              <div className="mt-4">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Delivery Instructions (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Leave with security, ring bell twice..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  maxLength={150}
+                  className="w-full px-4 py-2.5 rounded-2xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-slate-900 dark:text-white"
+                />
               </div>
             </div>
-          )}
 
-          {/* STEP 4: REVIEW & PLACE ORDER */}
-          {currentStep === 4 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="pb-3 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-900">Review & Place Your Order</h2>
-                <p className="text-xs text-slate-500">Confirm all details before dispatch</p>
+            {/* 3. Review Order Items Snapshot */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                    3
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                      Order Items Snapshot
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {checkoutSummary?.items.length || cart.items.length} items reserved
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/cart"
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1"
+                >
+                  Edit in Cart
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
 
-              {/* Delivery Details Card */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
-                <div className="flex items-center justify-between font-bold text-slate-800">
-                  <span>Delivering to: {selectedAddress?.fullName}</span>
-                  <button
-                    onClick={() => setCurrentStep(1)}
-                    className="text-brand-600 hover:underline"
-                  >
-                    Change
-                  </button>
-                </div>
-                <p className="text-slate-600">
-                  {selectedAddress?.houseFlat}, {selectedAddress?.street}, {selectedAddress?.area},{" "}
-                  {selectedAddress?.city} ({selectedAddress?.pincode})
-                </p>
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-slate-500">
-                  <span>Delivery Slot: <strong>{deliverySlot}</strong></span>
-                  <span>Payment: <strong>{paymentMethod.toUpperCase()}</strong></span>
-                </div>
-              </div>
-
-              {/* Ordered Items Preview */}
-              <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-80 overflow-y-auto pr-1">
+                {(checkoutSummary?.items || []).map((item, idx) => (
+                  <div key={item.variantId || idx} className="py-3.5 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                        <Image
-                          src={item.product.images[0]}
-                          alt={item.product.name}
-                          fill
-                          className="object-cover"
-                        />
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden relative shrink-0">
+                        {item.thumbnailUrl ? (
+                          <Image
+                            src={item.thumbnailUrl}
+                            alt={item.productTitle}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
+                            🛒
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800">{item.product.name}</p>
-                        <p className="text-slate-400">Qty: {item.quantity} • {item.product.unit}</p>
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-1">
+                          {item.productTitle}
+                        </h4>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                          {item.unit && <span>{item.unit}</span>}
+                          <span>Qty: {item.quantity}</span>
+                          <span>• {formatCurrency(item.unitPrice)} each</span>
+                        </div>
                       </div>
                     </div>
-                    <span className="font-bold text-slate-900">
-                      {formatCurrency(item.product.price * item.quantity)}
-                    </span>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white shrink-0">
+                      {formatCurrency(item.lineTotal)}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              <div className="pt-4 flex justify-between">
-                <Button variant="outline" onClick={() => setCurrentStep(3)}>
-                  Back
-                </Button>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  isLoading={loading}
-                  onClick={handlePlaceOrder}
-                  leftIcon={<CheckCircle2 className="w-5 h-5" />}
-                >
-                  Place Order ({formatCurrency(cart.total)})
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Summary Sidebar */}
-        <div className="lg:col-span-4 p-6 rounded-3xl bg-white border border-slate-100 shadow-card space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
-            Cart Total ({cart.itemCount} items)
-          </h3>
-
-          <div className="space-y-2 text-xs text-slate-600">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span className="font-bold text-slate-900">{formatCurrency(cart.subtotal)}</span>
-            </div>
-            {cart.discount > 0 && (
-              <div className="flex justify-between text-brand-600 font-bold">
-                <span>Discount</span>
-                <span>-{formatCurrency(cart.discount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span>Delivery Fee</span>
-              <span>{cart.deliveryFee === 0 ? <strong className="text-brand-600 font-bold">FREE</strong> : formatCurrency(cart.deliveryFee)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Taxes</span>
-              <span>{formatCurrency(cart.tax)}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-slate-200 text-base font-black text-slate-900">
-              <span>Grand Total</span>
-              <span>{formatCurrency(cart.total)}</span>
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-brand-50/40 border border-brand-100 text-[11px] text-brand-900 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-brand-600 shrink-0" />
-            <span>Encrypted 256-bit SSL transaction</span>
+          {/* Right Column: Authoritative Pricing Summary (Sticky) */}
+          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight mb-4 flex items-center justify-between">
+                <span>Payment Summary</span>
+                <span className="text-xs font-normal text-slate-400">Authoritative</span>
+              </h2>
+
+              {/* Free delivery indicator / progress bar */}
+              <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/40">
+                <div className="flex items-center justify-between text-xs font-semibold text-emerald-800 dark:text-emerald-300 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Truck className="w-4 h-4" />
+                    {subtotal >= freeThreshold ? "Free Delivery Unlocked!" : `Add ${formatCurrency(amountNeeded)} for Free Delivery`}
+                  </span>
+                  <span>{freeProgress}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-emerald-200/60 dark:bg-emerald-900/60 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-600 dark:bg-emerald-400 rounded-full transition-all duration-500"
+                    style={{ width: `${freeProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Price Breakdown */}
+              <div className="space-y-3 text-xs text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div className="flex justify-between">
+                  <span>Items Subtotal</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {formatCurrency(checkoutSummary?.subtotal ?? cart.subtotal)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-1">
+                    Delivery Fee
+                    {subtotal >= freeThreshold && (
+                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold px-1.5 py-0.2 rounded">
+                        PROMO
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-semibold">
+                    {(checkoutSummary?.deliveryFee ?? cart.deliveryFee) === 0 ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 uppercase font-bold text-xs">
+                        FREE
+                      </span>
+                    ) : (
+                      formatCurrency(checkoutSummary?.deliveryFee ?? cart.deliveryFee)
+                    )}
+                  </span>
+                </div>
+
+                {(checkoutSummary?.discount ?? cart.discount) > 0 && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                    <span>Coupon Discount</span>
+                    <span>-{formatCurrency(checkoutSummary?.discount ?? cart.discount)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between">
+                  <span>Taxes &amp; Platform Fees</span>
+                  <span className="text-slate-500">Included</span>
+                </div>
+              </div>
+
+              {/* Total Payable */}
+              <div className="pt-4 mb-6">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
+                      Total Amount
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Inclusive of all GST &amp; fees
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                    {formatCurrency(checkoutSummary?.total ?? cart.total)}
+                  </div>
+                </div>
+              </div>
+
+              {/* 30-Minute Guarantee Badge */}
+              <div className="mb-6 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+                <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Pricing &amp; items locked for 30 minutes</span>
+              </div>
+
+              {/* Confirm Checkout Primary Button */}
+              <button
+                onClick={handleConfirmCheckout}
+                disabled={confirming || (!selectedAddressId && !checkoutSummary?.address)}
+                className={`w-full py-4 rounded-2xl font-bold text-sm text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  confirming || (!selectedAddressId && !checkoutSummary?.address)
+                    ? "bg-slate-300 dark:bg-slate-800 cursor-not-allowed text-slate-500"
+                    : "bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] shadow-emerald-500/20"
+                }`}
+              >
+                {confirming ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Locking Checkout Session...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    Confirm Checkout • {formatCurrency(checkoutSummary?.total ?? cart.total)}
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-[11px] text-slate-400 mt-3 flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Double-click safe with Idempotency Protection
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Switch Address Modal / Drawer */}
+      {isSwitchAddressOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Select Delivery Address
+              </h3>
+              <button
+                onClick={() => setIsSwitchAddressOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {addresses.map((addr) => {
+                const isSelected = addr.id === selectedAddressId;
+                return (
+                  <div
+                    key={addr.id}
+                    onClick={() => handleSelectAddress(addr.id)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition ${
+                      isSelected
+                        ? "border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/20"
+                        : "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {addr.label || addr.addressType || "Home"}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {addr.fullName || addr.recipientName}
+                        </span>
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-emerald-600" />}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
+                      {addr.houseFlat || addr.addressLine1}, {addr.city}, {addr.pincode || addr.postalCode}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setIsSwitchAddressOpen(false);
+                  setIsAddressModalOpen(true);
+                }}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Address
+              </button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSwitchAddressOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Address Creation Modal */}
       <AddressModal
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}

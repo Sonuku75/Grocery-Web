@@ -1,7 +1,7 @@
 {
   "version": 4,
   "routes": {
-    "/about": {
+    "/checkout": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -14,8 +14,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/about",
-      "dataRoute": "/about.rsc",
+      "srcRoute": "/checkout",
+      "dataRoute": "/checkout.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -25,7 +25,8 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/contact": {
+    "/_not-found": {
+      "initialStatus": 404,
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -38,80 +39,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/contact",
-      "dataRoute": "/contact.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/categories": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/categories",
-      "dataRoute": "/categories.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/cart": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/cart",
-      "dataRoute": "/cart.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/offers": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/offers",
-      "dataRoute": "/offers.rsc",
+      "srcRoute": "/_not-found",
+      "dataRoute": "/_not-found.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -145,7 +74,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/privacy": {
+    "/about": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -158,32 +87,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/privacy",
-      "dataRoute": "/privacy.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/payment": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/payment",
-      "dataRoute": "/payment.rsc",
+      "srcRoute": "/about",
+      "dataRoute": "/about.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -217,7 +122,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/register": {
+    "/": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -230,8 +135,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/register",
-      "dataRoute": "/register.rsc",
+      "srcRoute": "/",
+      "dataRoute": "/index.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -241,7 +146,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/profile": {
+    "/privacy": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -254,32 +159,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/profile",
-      "dataRoute": "/profile.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/terms": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/terms",
-      "dataRoute": "/terms.rsc",
+      "srcRoute": "/privacy",
+      "dataRoute": "/privacy.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -313,7 +194,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/products": {
+    "/profile": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -326,8 +207,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/products",
-      "dataRoute": "/products.rsc",
+      "srcRoute": "/profile",
+      "dataRoute": "/profile.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -337,7 +218,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/wishlist": {
+    "/register": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -350,8 +231,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/wishlist",
-      "dataRoute": "/wishlist.rsc",
+      "srcRoute": "/register",
+      "dataRoute": "/register.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -409,8 +290,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/_not-found": {
-      "initialStatus": 404,
+    "/payment": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -423,8 +303,32 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/_not-found",
-      "dataRoute": "/_not-found.rsc",
+      "srcRoute": "/payment",
+      "dataRoute": "/payment.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/terms": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/terms",
+      "dataRoute": "/terms.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -458,7 +362,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/addresses": {
+    "/wishlist": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -471,8 +375,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/addresses",
-      "dataRoute": "/addresses.rsc",
+      "srcRoute": "/wishlist",
+      "dataRoute": "/wishlist.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -482,7 +386,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/checkout": {
+    "/offers": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -495,8 +399,32 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/checkout",
-      "dataRoute": "/checkout.rsc",
+      "srcRoute": "/offers",
+      "dataRoute": "/offers.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/products": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/products",
+      "dataRoute": "/products.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -530,7 +458,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/": {
+    "/addresses": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -543,8 +471,80 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/",
-      "dataRoute": "/index.rsc",
+      "srcRoute": "/addresses",
+      "dataRoute": "/addresses.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/categories": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/categories",
+      "dataRoute": "/categories.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/contact": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/contact",
+      "dataRoute": "/contact.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/cart": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/cart",
+      "dataRoute": "/cart.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -558,8 +558,8 @@
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "2df4130907f048e2afe68d256a7237eb",
-    "previewModeSigningKey": "edbe9b984cff91a9609ad746134aad59037af6ca02297447e919c633b0c6b8b5",
-    "previewModeEncryptionKey": "d4caab835ca774ffde6f533bba7e37c5e998b54f634c6630fa663d3e74774366"
+    "previewModeId": "59aac6736235e5786277eb472ba5af14",
+    "previewModeSigningKey": "d8864b681e97cfc9b409be2ed25c61a1d5645fb54170786fc0f4ede08de21ade",
+    "previewModeEncryptionKey": "7ff80121b475c3874acbb405665b4778745b43dc879e24530ffba887fa71e2bb"
   }
 }

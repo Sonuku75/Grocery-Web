@@ -77,14 +77,22 @@ export default function OrderConfirmationPage({ params }: ConfirmationPageProps)
               <div>
                 <span className="font-bold text-slate-800">Delivering to:</span>
                 <p className="text-slate-500">
-                  {order.address.houseFlat}, {order.address.street}, {order.address.city}
+                  {order.addressSnapshot?.addressLine1 ||
+                    order.address?.addressLine1 ||
+                    (order.address as any)?.houseFlat ||
+                    ""}
+                  {order.addressSnapshot?.city
+                    ? `, ${order.addressSnapshot.city}`
+                    : order.address?.city
+                    ? `, ${order.address.city}`
+                    : ""}
                 </p>
               </div>
             </div>
 
             <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-sm font-bold text-slate-900">
-              <span>Total Paid ({order.paymentMethod.toUpperCase()}):</span>
-              <span className="text-brand-700">{formatCurrency(order.total)}</span>
+              <span>Total Paid ({(order.paymentMethod || "COD").toUpperCase()}):</span>
+              <span className="text-brand-700">{formatCurrency(order.totalAmount ?? order.total ?? 0)}</span>
             </div>
           </div>
         )}

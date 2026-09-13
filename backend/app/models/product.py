@@ -57,6 +57,8 @@ class Product(Base, TimestampMixin):
         Index("idx_products_cat_active_featured", "category_id", "is_active", "is_featured"),
         Index("idx_products_brand_active", "brand", "is_active"),
         Index("idx_products_keyset", "is_active", "created_at", "id"),
+        Index("idx_products_active_name", "is_active", "name"),
+        Index("idx_products_name", "name"),
     )
 
     # Frontend camelCase compatibility properties

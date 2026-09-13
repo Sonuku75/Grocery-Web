@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { X, ShoppingBag, ArrowRight, Trash2, Truck } from "lucide-react";
+import { X, ShoppingBag, ArrowRight, Trash2, Truck, Tag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/common/Button";
 import { QuantitySelector } from "@/components/common/QuantitySelector";
@@ -20,7 +20,7 @@ export function CartDrawer() {
 
   if (!isCartDrawerOpen) return null;
 
-  const freeDeliveryThreshold = 35;
+  const freeDeliveryThreshold = 500;
   const remainingForFreeDelivery = Math.max(0, freeDeliveryThreshold - cart.subtotal);
   const progressPercent = Math.min(100, (cart.subtotal / freeDeliveryThreshold) * 100);
 
@@ -100,46 +100,63 @@ export function CartDrawer() {
                 </Button>
               </div>
             ) : (
-              cart.items.map((item) => (
-                <div key={item.id} className="py-3.5 flex gap-3.5 items-center">
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
-                    <Image
-                      src={item.product.images[0]}
-                      alt={item.product.name}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
-                    />
-                  </div>
+              cart.items.map((item) => {
+                const productObj = (item.product || {}) as any;
+                const title = productObj.title || productObj.name || "Grocery Item";
+                const unit = item.variant?.unit || productObj.unit || "1 unit";
+                const unitPrice = item.unitPrice ?? item.variant?.price ?? productObj.price ?? 0;
+                const rowTotal = item.lineTotal ?? unitPrice * item.quantity;
+                const itemImage =
+                  (productObj.images && productObj.images.length > 0 && productObj.images[0]) ||
+                  productObj.thumbnailUrl ||
+                  productObj.thumbnail_url ||
+                  productObj.imageUrl ||
+                  productObj.image_url ||
+                  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800";
 
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-semibold text-slate-800 truncate">
-                      {item.product.name}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{item.product.unit}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs font-bold text-slate-900">
-                        {formatCurrency(item.product.price * item.quantity)}
-                      </span>
-                      <QuantitySelector
-                        quantity={item.quantity}
-                        onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
-                        onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
-                        size="sm"
+                return (
+                  <div key={item.id} className="py-3.5 flex gap-3.5 items-center">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                      <Image
+                        src={itemImage}
+                        alt={title}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
                       />
                     </div>
-                  </div>
 
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"
-                    title="Remove item"
-                    aria-label="Remove item"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-semibold text-slate-800 truncate">
+                        {title}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{unit}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs font-bold text-slate-900">
+                          {formatCurrency(rowTotal)}
+                        </span>
+                        <QuantitySelector
+                          quantity={item.quantity}
+                          min={1}
+                          max={99}
+                          onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
+                          onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"
+                      title="Remove item"
+                      aria-label="Remove item"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -151,8 +168,17 @@ export function CartDrawer() {
                   <span>Subtotal</span>
                   <span className="font-semibold text-slate-900">{formatCurrency(cart.subtotal)}</span>
                 </div>
-                {cart.discount > 0 && (
-                  <div className="flex justify-between text-brand-600 font-semibold">
+                {cart.appliedCoupon && (
+                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <Tag className="w-3 h-3 text-emerald-600" />
+                      <span>{cart.appliedCoupon.code} applied</span>
+                    </span>
+                    <span>-{formatCurrency(cart.discount)}</span>
+                  </div>
+                )}
+                {cart.discount > 0 && !cart.appliedCoupon && (
+                  <div className="flex justify-between text-emerald-600 font-semibold">
                     <span>Discount</span>
                     <span>-{formatCurrency(cart.discount)}</span>
                   </div>

@@ -197,23 +197,91 @@ export interface ProductListResponse {
   total?: number;
 }
 
+export interface CartVariantSummary {
+  id: string;
+  productId?: string;
+  product_id?: string;
+  sku?: string;
+  name?: string;
+  unit?: string;
+  price: number;
+  mrp?: number | null;
+  stockQuantity?: number;
+  stock_quantity?: number;
+  isActive?: boolean;
+  is_active?: boolean;
+}
+
+export interface CartProductSummary {
+  id: string;
+  title: string;
+  name: string;
+  slug: string;
+  thumbnailUrl?: string | null;
+  thumbnail_url?: string | null;
+  imageUrl?: string | null;
+  image_url?: string | null;
+  images?: string[];
+  price?: number;
+  unit?: string;
+  brand?: string;
+  isActive?: boolean;
+  is_active?: boolean;
+}
+
 export interface CartItem {
   id: string;
+  cartId?: string;
+  cart_id?: string;
   productId: string;
-  product: Product;
+  product_id?: string;
+  variantId?: string;
+  variant_id?: string;
   quantity: number;
+  unitPrice?: number;
+  unit_price?: number;
+  lineTotal?: number;
+  line_total?: number;
+  product: Product;
+  variant?: CartVariantSummary;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
 }
 
 export interface Cart {
+  id?: string;
+  userId?: string;
+  user_id?: string;
   items: CartItem[];
   itemCount: number;
+  item_count?: number;
   subtotal: number;
   discount: number;
   deliveryFee: number;
+  delivery_fee?: number;
   tax: number;
   total: number;
   appliedCoupon?: Coupon | null;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
 }
+
+export interface AddToCartPayload {
+  variantId: string;
+  variant_id?: string;
+  productId?: string;
+  product_id?: string;
+  quantity?: number;
+}
+
+export interface UpdateCartItemPayload {
+  quantity: number;
+}
+
 
 export type AddressType = 'home' | 'work' | 'other';
 
@@ -282,6 +350,15 @@ export interface AddressListResponse {
 }
 
 export type OrderStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | 'FAILED'
+  // Legacy lowercase compatibility
   | 'order_placed'
   | 'confirmed'
   | 'preparing'
@@ -290,7 +367,23 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled';
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'FAILED'
+  | 'REFUNDED'
+  // Legacy lowercase compatibility
+  | 'pending'
+  | 'paid'
+  | 'failed'
+  | 'refunded';
+
+export type FulfillmentStatus =
+  | 'UNFULFILLED'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED';
 
 export type PaymentMethod = 'card' | 'upi' | 'netbanking' | 'cod';
 
@@ -303,48 +396,137 @@ export interface TrackingStep {
   current: boolean;
 }
 
+export interface OrderAddressSnapshot {
+  fullName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  landmark?: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country?: string;
+  addressType?: string;
+}
+
+export interface OrderStatusHistoryItem {
+  id: string;
+  orderId?: string;
+  fromStatus?: OrderStatus | null;
+  toStatus: OrderStatus;
+  reason?: string | null;
+  changedByUserId?: string | null;
+  createdAt: string;
+}
+
 export interface OrderItem {
   id: string;
   productId: string;
+  variantId?: string;
   productName: string;
-  productImage: string;
+  variantName?: string;
+  sku?: string;
+  unitValue?: number;
+  unitType?: string;
+  unit?: string;
   unitPrice: number;
+  mrp?: number;
   quantity: number;
-  totalPrice: number;
-  unit: string;
+  lineTotal?: number;
+  totalPrice?: number;
+  thumbnailUrl?: string;
+  productImage?: string;
 }
 
 export interface Order {
   id: string;
   orderNumber: string;
   userId: string;
-  address: Address;
-  items: OrderItem[];
-  subtotal: number;
-  discount: number;
-  deliveryFee: number;
-  tax: number;
-  total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  paymentMethod: PaymentMethod;
-  paymentTransactionId?: string;
-  trackingHistory: TrackingStep[];
+  fulfillmentStatus?: FulfillmentStatus;
+  subtotalAmount?: number;
+  subtotal?: number;
+  discountAmount?: number;
+  discount?: number;
+  deliveryFee: number;
+  taxAmount?: number;
+  tax?: number;
+  totalAmount?: number;
+  total?: number;
   deliverySlot?: string;
+  couponCode?: string | null;
+  notes?: string | null;
+  addressSnapshot?: OrderAddressSnapshot;
+  address?: Address;
+  items: OrderItem[];
+  statusHistory?: OrderStatusHistoryItem[];
+  paymentMethod?: PaymentMethod;
+  paymentTransactionId?: string;
+  trackingHistory?: TrackingStep[];
   estimatedDeliveryTime?: string;
+  checkoutSessionId?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
+
+export interface CreateOrderRequest {
+  checkoutSessionId: string;
+  notes?: string;
+}
+
+export interface OrderListResponse {
+  items: Order[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type CouponDiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'percent' | 'fixed';
 
 export interface Coupon {
   id: string;
   code: string;
-  discountType: 'percent' | 'fixed';
+  name?: string;
+  description?: string;
+  discountType: CouponDiscountType;
+  discount_type?: CouponDiscountType;
   discountValue: number;
+  discount_value?: number;
+  minimumOrderValue?: number;
+  minimum_order_value?: number;
   minOrderAmount: number;
-  maxDiscount?: number;
+  min_order_amount?: number;
+  maximumDiscount?: number | null;
+  maximum_discount?: number | null;
+  maxDiscount?: number | null;
+  max_discount?: number | null;
+  startsAt?: string;
+  starts_at?: string;
+  expiresAt?: string;
+  expires_at?: string;
   validUntil: string;
-  description: string;
+  valid_until?: string;
+  usageLimit?: number | null;
+  usage_limit?: number | null;
+  perUserUsageLimit?: number | null;
+  per_user_usage_limit?: number | null;
+  usedCount?: number;
+  used_count?: number;
+  isActive?: boolean;
+  is_active?: boolean;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+}
+
+export interface CouponValidateResponse {
+  valid: boolean;
+  code: string;
+  discount: number;
+  message: string;
+  coupon?: Coupon | null;
 }
 
 export interface ApiResponse<T> {
@@ -373,4 +555,246 @@ export interface ProductFilters {
   sortBy?: 'relevance' | 'price_asc' | 'price_desc' | 'rating' | 'newest' | 'popular';
   page?: number;
   limit?: number;
+}
+
+// ==========================================
+// Module 5: Search & Product Discovery Types
+// ==========================================
+
+export type SearchSortOption =
+  | 'relevance'
+  | 'price_low_to_high'
+  | 'price_high_to_low'
+  | 'newest'
+  | 'featured';
+
+export interface SearchParams {
+  q?: string;
+  category_id?: string;
+  categoryId?: string;
+  brand?: string;
+  min_price?: number;
+  minPrice?: number;
+  max_price?: number;
+  maxPrice?: number;
+  sort?: SearchSortOption;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface SearchItemCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface SearchProduct {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string;
+  imageUrl?: string;
+  image_url?: string;
+  price: number;
+  mrp: number;
+  discountPercentage: number;
+  discount_percentage?: number;
+  unit?: string;
+  isFeatured?: boolean;
+  is_featured?: boolean;
+  category?: SearchItemCategory;
+}
+
+export interface SearchResponse {
+  query?: string;
+  items: SearchProduct[];
+  nextCursor?: string;
+  next_cursor?: string;
+  hasMore: boolean;
+  has_more?: boolean;
+  total: number;
+}
+
+export interface SearchSuggestion {
+  type: 'product' | 'brand' | 'category';
+  label: string;
+  slug?: string;
+  id?: string;
+  price?: number;
+  imageUrl?: string;
+  image_url?: string;
+}
+
+export interface SearchSuggestionResponse {
+  items: SearchSuggestion[];
+}
+
+export interface WishlistProduct {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string;
+  description?: string;
+  shortDescription?: string;
+  short_description?: string;
+  imageUrl?: string;
+  image_url?: string;
+  isActive?: boolean;
+  is_active?: boolean;
+  isFeatured?: boolean;
+  is_featured?: boolean;
+  minPrice?: number;
+  min_price?: number;
+  minMrp?: number;
+  min_mrp?: number;
+  maxDiscountPercentage?: number;
+  max_discount_percentage?: number;
+  primaryVariant?: ProductVariant;
+  primary_variant?: ProductVariant;
+  variants?: ProductVariant[];
+  images?: ProductImage[];
+  category?: Category;
+  categoryId?: string;
+  category_id?: string;
+  rating?: number;
+  ratingCount?: number;
+  rating_count?: number;
+}
+
+export interface WishlistItem {
+  id: string;
+  productId: string;
+  product_id?: string;
+  product: Product;
+  createdAt: string;
+  created_at?: string;
+}
+
+export interface WishlistResponse {
+  items: WishlistItem[];
+  count: number;
+  nextCursor?: string;
+  next_cursor?: string;
+  hasMore: boolean;
+  has_more?: boolean;
+}
+
+export interface WishlistCheckResponse {
+  productId: string;
+  product_id?: string;
+  isWishlisted: boolean;
+  is_wishlisted?: boolean;
+}
+
+export interface WishlistRemoveResponse {
+  productId: string;
+  product_id?: string;
+  removed: boolean;
+  message: string;
+}
+
+// =============================================================================
+// Module 9: Checkout Types
+// =============================================================================
+
+export type CheckoutStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
+
+export interface CheckoutItemSnapshot {
+  variantId: string;
+  variant_id?: string;
+  productId: string;
+  product_id?: string;
+  sku?: string;
+  productTitle: string;
+  product_title?: string;
+  variantName?: string;
+  variant_name?: string;
+  unit?: string;
+  quantity: number;
+  unitPrice: number;
+  unit_price?: number;
+  lineTotal: number;
+  line_total?: number;
+  thumbnailUrl?: string;
+  thumbnail_url?: string;
+}
+
+export interface CheckoutAddressSnapshot {
+  id?: string;
+  recipientName: string;
+  recipient_name?: string;
+  phone: string;
+  mobile?: string;
+  addressLine1: string;
+  address_line_1?: string;
+  addressLine2?: string;
+  address_line_2?: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  country?: string;
+  postalCode: string;
+  postal_code?: string;
+  label?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface CheckoutPreviewRequest {
+  addressId?: string;
+  address_id?: string;
+  deliveryMethod?: string;
+  delivery_method?: string;
+  deliverySlot?: string;
+  delivery_slot?: string;
+}
+
+export interface CheckoutConfirmRequest {
+  checkoutSessionId: string;
+  checkout_session_id?: string;
+  deliverySlot?: string;
+  delivery_slot?: string;
+  notes?: string;
+}
+
+export interface CheckoutSummary {
+  id: string;
+  userId: string;
+  user_id?: string;
+  cartId: string;
+  cart_id?: string;
+  status: CheckoutStatus;
+  items: CheckoutItemSnapshot[];
+  address?: CheckoutAddressSnapshot | null;
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  delivery_fee?: number;
+  tax: number;
+  total: number;
+  currency: string;
+  coupon?: Coupon | null;
+  deliveryMethod: string;
+  delivery_method?: string;
+  deliverySlot?: string;
+  delivery_slot?: string;
+  expiresAt: string;
+  expires_at?: string;
+  priceChanged?: boolean;
+  price_changed?: boolean;
+  warningMessage?: string | null;
+  warning_message?: string | null;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+}
+
+export interface CheckoutConfirmResponse {
+  checkoutStatus: string;
+  checkout_status?: string;
+  checkoutSessionId: string;
+  checkout_session_id?: string;
+  summary: CheckoutSummary;
+  message: string;
 }

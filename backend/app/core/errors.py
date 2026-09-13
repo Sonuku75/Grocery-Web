@@ -117,6 +117,33 @@ def setup_exception_handlers(app: FastAPI) -> None:
             headers={"X-Request-ID": request_id} if request_id else {},
         )
 
+    from pydantic import ValidationError as PydanticValidationError
+
+    @app.exception_handler(PydanticValidationError)
+    async def pydantic_validation_exception_handler(request: Request, exc: PydanticValidationError) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", None)
+        formatted_errors = []
+        for err in exc.errors():
+            formatted_errors.append({
+                "field": " -> ".join(str(loc) for loc in err.get("loc", [])),
+                "message": err.get("msg"),
+                "type": err.get("type"),
+            })
+
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "The request payload failed validation.",
+                    "details": formatted_errors,
+                },
+                "request_id": request_id,
+            },
+            headers={"X-Request-ID": request_id} if request_id else {},
+        )
+
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)

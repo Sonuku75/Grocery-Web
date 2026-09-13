@@ -81,23 +81,35 @@ export default function OffersPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-accent-50 text-accent-700 border border-accent-200">
-                    {coupon.discountType === "percent"
+                    {coupon.discountType === "percent" || coupon.discountType === "PERCENTAGE"
                       ? `${coupon.discountValue}% OFF`
-                      : `$${coupon.discountValue} FLAT OFF`}
+                      : `₹${coupon.discountValue} FLAT OFF`}
                   </span>
                   <span className="text-[10px] text-slate-400 font-medium">
-                    Min order ${coupon.minOrderAmount}
+                    Min order ₹{coupon.minOrderAmount || coupon.minimumOrderValue || 0}
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 mt-1">{coupon.code}</h3>
+                <h3 className="text-sm font-black text-slate-900 mt-1 tracking-wide">{coupon.code}</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  {coupon.description}
+                  {coupon.description || coupon.name}
                 </p>
+                {(coupon.maxDiscount || coupon.maximumDiscount) && (
+                  <span className="inline-block text-[10px] font-bold text-amber-700 mt-1">
+                    Up to ₹{coupon.maxDiscount || coupon.maximumDiscount} off
+                  </span>
+                )}
               </div>
 
               <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-[10px] text-slate-400">
-                  Expires {coupon.validUntil}
+                  Expires{" "}
+                  {coupon.validUntil || coupon.expiresAt
+                    ? new Date(coupon.validUntil || coupon.expiresAt!).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Soon"}
                 </span>
                 <button
                   onClick={() => copyCoupon(coupon.code)}

@@ -18,7 +18,11 @@ export function ProductCard({ product }: ProductCardProps) {
   const { cart, addToCart, updateQuantity, getItemQuantity } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
-  const quantity = getItemQuantity(product.id);
+  const defaultVariant = product.primaryVariant || (product.variants && product.variants.length > 0 ? product.variants[0] : undefined);
+  const cartItem = cart.items.find((i) =>
+    defaultVariant ? i.variantId === defaultVariant.id : i.productId === product.id
+  );
+  const quantity = cartItem ? cartItem.quantity : 0;
   const isWished = isInWishlist(product.id);
 
   const productUrl = `/products/${product.slug || product.id}`;
@@ -28,30 +32,28 @@ export function ProductCard({ product }: ProductCardProps) {
     "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800";
 
   const discount = product.discountPercentage ?? product.discountPercent ?? 0;
-  const price = product.price;
-  const originalPrice = product.originalPrice ?? product.mrp ?? price;
+  const price = defaultVariant?.price ?? product.price;
+  const originalPrice = defaultVariant?.mrp ?? product.originalPrice ?? product.mrp ?? price;
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, 1);
+    addToCart(product, 1, defaultVariant);
   };
 
   const handleIncrease = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const cartItem = cart.items.find((i) => i.productId === product.id);
     if (cartItem) {
       updateQuantity(cartItem.id, quantity + 1);
     } else {
-      addToCart(product, 1);
+      addToCart(product, 1, defaultVariant);
     }
   };
 
   const handleDecrease = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const cartItem = cart.items.find((i) => i.productId === product.id);
     if (cartItem) {
       updateQuantity(cartItem.id, quantity - 1);
     }

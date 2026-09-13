@@ -91,4 +91,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_RESET_PASSWORD: int = int(os.getenv("RATE_LIMIT_RESET_PASSWORD", "5"))
     COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 
+    # Module 9 Checkout & Delivery Settings
+    FREE_DELIVERY_THRESHOLD: float = float(os.getenv("FREE_DELIVERY_THRESHOLD", "499.0"))
+    STANDARD_DELIVERY_FEE: float = float(os.getenv("STANDARD_DELIVERY_FEE", "40.0"))
+    CHECKOUT_SESSION_EXPIRE_MINUTES: int = int(os.getenv("CHECKOUT_SESSION_EXPIRE_MINUTES", "30"))
+
 settings = Settings()
+

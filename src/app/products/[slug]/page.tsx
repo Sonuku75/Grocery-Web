@@ -14,6 +14,8 @@ import {
   Package,
   Layers,
   ShoppingBag,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { productService } from "@/services/productService";
@@ -23,6 +25,7 @@ import { Rating } from "@/components/common/Rating";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { ErrorState } from "@/components/common/ErrorState";
 import { formatCurrency } from "@/lib/utils";
+import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/context/ToastContext";
 
@@ -42,6 +45,7 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
   const [activeTab, setActiveTab] = useState<"description" | "specifications">("description");
 
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { cart, addToCart, updateQuantity, setIsCartDrawerOpen } = useCart();
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -228,21 +232,86 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
             />
           )}
 
-          {/* Separation of Catalog and Future Cart CTA */}
-          <div className="space-y-3 pt-2">
-            <button
-              type="button"
-              disabled
-              className="w-full py-3.5 px-6 rounded-2xl bg-brand-600/80 text-white font-bold text-sm sm:text-base shadow-sm cursor-not-allowed opacity-90 flex items-center justify-center gap-2"
-              title="Cart functionality will be enabled in Module 6"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Add to Cart (Coming in Module 6)</span>
-            </button>
-            <p className="text-[11px] text-center text-slate-400">
-              Product catalog & variant browsing preview. Ordering goes live in upcoming release.
-            </p>
-          </div>
+          {/* Live Add to Cart CTA + Wishlist Action */}
+          {(() => {
+            const cartItem = product
+              ? cart.items.find((i) =>
+                  selectedVariant ? i.variantId === selectedVariant.id : i.productId === product.id
+                )
+              : undefined;
+            const cartQuantity = cartItem ? cartItem.quantity : 0;
+
+            return (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3">
+                  {cartQuantity === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => product && addToCart(product, 1, selectedVariant || undefined)}
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-sm sm:text-base shadow-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>Add to Cart</span>
+                    </button>
+                  ) : (
+                    <div className="flex-1 flex items-center gap-3">
+                      <div className="flex items-center rounded-2xl bg-brand-600 text-white p-1 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => cartItem && updateQuantity(cartItem.id, cartQuantity - 1)}
+                          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-brand-700 active:scale-90 transition-all"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-extrabold select-none">
+                          {cartQuantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => cartItem && updateQuantity(cartItem.id, cartQuantity + 1)}
+                          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-brand-700 active:scale-90 transition-all"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsCartDrawerOpen(true)}
+                        className="px-4 py-3 rounded-2xl bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold text-xs sm:text-sm border border-brand-200 transition-all"
+                      >
+                        View in Cart
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => product && toggleWishlist(product)}
+                    className={`p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-center shrink-0 ${
+                      product && isInWishlist(product.id)
+                        ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-rose-500"
+                    }`}
+                    aria-label={
+                      product && isInWishlist(product.id)
+                        ? `Remove ${product.name} from wishlist`
+                        : `Add ${product?.name ?? "product"} to wishlist`
+                    }
+                    title={product && isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                  >
+                    <Heart
+                      className={`w-5 h-5 transition-transform active:scale-90 ${
+                        product && isInWishlist(product.id) ? "fill-rose-500 text-rose-500" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
 
           {/* Trust Guarantees */}
           <div className="grid grid-cols-3 gap-2.5 pt-4 border-t border-slate-100 text-center">
