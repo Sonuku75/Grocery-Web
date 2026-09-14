@@ -32,7 +32,7 @@ class CartRepository:
             select(Cart)
             .options(
                 selectinload(Cart.items).selectinload(CartItem.product).selectinload(Product.images),
-                selectinload(Cart.items).selectinload(CartItem.variant),
+                selectinload(Cart.items).selectinload(CartItem.variant).selectinload(ProductVariant.inventory),
                 selectinload(Cart.coupon),
             )
             .where(Cart.user_id == user_id)
@@ -67,7 +67,7 @@ class CartRepository:
             .options(
                 selectinload(CartItem.cart),
                 selectinload(CartItem.product).selectinload(Product.images),
-                selectinload(CartItem.variant),
+                selectinload(CartItem.variant).selectinload(ProductVariant.inventory),
             )
             .where(CartItem.id == item_id)
         )
@@ -85,7 +85,7 @@ class CartRepository:
             select(CartItem)
             .options(
                 selectinload(CartItem.product).selectinload(Product.images),
-                selectinload(CartItem.variant),
+                selectinload(CartItem.variant).selectinload(ProductVariant.inventory),
             )
             .where(
                 CartItem.cart_id == cart_id,

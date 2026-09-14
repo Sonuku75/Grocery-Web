@@ -129,6 +129,18 @@ class Order(Base, TimestampMixin):
         lazy="selectin",
     )
     checkout_session = relationship("CheckoutSession", lazy="selectin")
+    payments = relationship(
+        "Payment",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="Payment.created_at.desc()",
+        lazy="selectin",
+    )
+    reviews = relationship(
+        "Review",
+        back_populates="order",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         CheckConstraint("subtotal >= 0", name="chk_orders_subtotal_non_negative"),
@@ -183,6 +195,7 @@ class OrderItem(Base, TimestampMixin):
     order = relationship("Order", back_populates="items")
     product = relationship("Product", lazy="selectin")
     variant = relationship("ProductVariant", lazy="selectin")
+    review = relationship("Review", back_populates="order_item", uselist=False, lazy="selectin")
 
     __table_args__ = (
         CheckConstraint("quantity >= 1", name="chk_order_items_quantity"),

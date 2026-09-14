@@ -35,15 +35,36 @@ export function ProductCard({ product }: ProductCardProps) {
   const price = defaultVariant?.price ?? product.price;
   const originalPrice = defaultVariant?.mrp ?? product.originalPrice ?? product.mrp ?? price;
 
+  const isOutOfStock =
+    defaultVariant?.isOutOfStock ||
+    defaultVariant?.is_out_of_stock ||
+    (defaultVariant?.availableQuantity !== undefined && defaultVariant.availableQuantity <= 0) ||
+    product.inStock === false ||
+    product.stock === 0;
+
+  const isLowStock =
+    !isOutOfStock &&
+    (defaultVariant?.isLowStock ||
+      defaultVariant?.is_low_stock ||
+      (defaultVariant?.availableQuantity !== undefined && defaultVariant.availableQuantity <= 5));
+
+  const availableQuantity =
+    defaultVariant?.availableQuantity ??
+    defaultVariant?.available_quantity ??
+    product.stock ??
+    99;
+
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
     addToCart(product, 1, defaultVariant);
   };
 
   const handleIncrease = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (quantity >= availableQuantity) return;
     if (cartItem) {
       updateQuantity(cartItem.id, quantity + 1);
     } else {
@@ -69,7 +90,11 @@ export function ProductCard({ product }: ProductCardProps) {
     <div className="group relative flex flex-col rounded-3xl bg-white border border-slate-100/80 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       {/* Top badges & Wishlist */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between pointer-events-none">
-        {discount > 0 ? (
+        {isOutOfStock ? (
+          <span className="bg-rose-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg shadow-xs uppercase tracking-wider">
+            Out of Stock
+          </span>
+        ) : discount > 0 ? (
           <span className="bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg shadow-xs uppercase tracking-wider">
             {discount}% OFF
           </span>
@@ -101,7 +126,9 @@ export function ProductCard({ product }: ProductCardProps) {
           src={displayImage}
           alt={product.name}
           fill
-          className="object-cover object-center group-hover:scale-105 transition-transform duration-500 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          className={`object-cover object-center group-hover:scale-105 transition-transform duration-500 motion-reduce:transition-none motion-reduce:group-hover:scale-100 ${
+            isOutOfStock ? "grayscale opacity-75" : ""
+          }`}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
         />
       </Link>
@@ -126,7 +153,13 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Rating */}
         <div className="mb-2.5 sm:mb-3">
-          <Rating rating={product.rating} count={product.ratingCount} size="sm" />
+          {product.ratingCount && product.ratingCount > 0 && product.rating > 0 ? (
+            <Rating rating={product.rating} count={product.ratingCount} size="sm" />
+          ) : (
+            <span className="text-[11px] font-medium text-slate-400 italic">
+              No reviews yet
+            </span>
+          )}
         </div>
 
         {/* Price & Quantity / Add Button */}
@@ -142,13 +175,31 @@ export function ProductCard({ product }: ProductCardProps) {
                 </span>
               )}
             </div>
-            <span className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold block">
-              In Stock
-            </span>
+            {isOutOfStock ? (
+              <span className="text-[9px] sm:text-[10px] text-rose-600 font-semibold block">
+                Out of Stock
+              </span>
+            ) : isLowStock ? (
+              <span className="text-[9px] sm:text-[10px] text-amber-600 font-semibold block">
+                Only {availableQuantity} left
+              </span>
+            ) : (
+              <span className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold block">
+                In Stock
+              </span>
+            )}
           </div>
 
           {/* Cart Control */}
-          {quantity === 0 ? (
+          {isOutOfStock ? (
+            <button
+              type="button"
+              disabled
+              className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-semibold cursor-not-allowed shrink-0"
+            >
+              Sold Out
+            </button>
+          ) : quantity === 0 ? (
             <button
               onClick={handleAdd}
               type="button"
@@ -172,8 +223,11 @@ export function ProductCard({ product }: ProductCardProps) {
               </span>
               <button
                 onClick={handleIncrease}
+                disabled={quantity >= availableQuantity}
                 type="button"
-                className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg hover:bg-brand-700 active:scale-90 transition-all"
+                className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg active:scale-90 transition-all ${
+                  quantity >= availableQuantity ? "opacity-50 cursor-not-allowed" : "hover:bg-brand-700"
+                }`}
                 aria-label="Increase quantity"
               >
                 <Plus className="w-3 h-3" />

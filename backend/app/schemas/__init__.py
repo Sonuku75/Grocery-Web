@@ -63,6 +63,44 @@ from app.schemas.order import (
     OrderStatusHistoryResponse,
     OrderSummaryResponse,
 )
+from app.schemas.inventory import (
+    AdminAdjustStockRequest,
+    AdminCreateInventoryRequest,
+    AdminInventoryListResponse,
+    AdminInventoryResponse,
+    AdminUpdateInventoryRequest,
+    CustomerInventoryResponse,
+    InventoryTransactionResponse,
+)
+from app.schemas.payment import (
+    AdminPaymentListResponse,
+    AdminPaymentResponse,
+    CreateRefundRequest,
+    InitiatePaymentRequest,
+    InitiatePaymentResponse,
+    PaymentRefundResponse,
+    PaymentResponse,
+    PaymentStatusHistoryResponse,
+    RetryPaymentRequest,
+    VerifyPaymentRequest,
+)
+from app.schemas.notification import (
+    NotificationDeliveryResponse,
+    NotificationListResponse,
+    NotificationResponse,
+    NotificationTemplateResponse,
+    UnreadCountResponse,
+)
+from app.schemas.notification_preference import (
+    NotificationPreferenceItem,
+    NotificationPreferencesResponse,
+    UpdateNotificationPreferenceRequest,
+)
+from app.schemas.device import (
+    DeviceListResponse,
+    DeviceResponse,
+    RegisterDeviceRequest,
+)
 from app.schemas.search import (
     SearchFilterParams,
     SearchItem,
@@ -146,4 +184,32 @@ __all__ = [
     "WishlistProductResponse",
     "WishlistRemoveResponse",
     "WishlistResponse",
+    "AdminAdjustStockRequest",
+    "AdminCreateInventoryRequest",
+    "AdminInventoryListResponse",
+    "AdminInventoryResponse",
+    "AdminUpdateInventoryRequest",
+    "CustomerInventoryResponse",
+    "InventoryTransactionResponse",
+    "AdminPaymentListResponse",
+    "AdminPaymentResponse",
+    "CreateRefundRequest",
+    "InitiatePaymentRequest",
+    "InitiatePaymentResponse",
+    "PaymentRefundResponse",
+    "PaymentResponse",
+    "PaymentStatusHistoryResponse",
+    "RetryPaymentRequest",
+    "VerifyPaymentRequest",
+    "NotificationResponse",
+    "NotificationListResponse",
+    "UnreadCountResponse",
+    "NotificationDeliveryResponse",
+    "NotificationTemplateResponse",
+    "NotificationPreferenceItem",
+    "NotificationPreferencesResponse",
+    "UpdateNotificationPreferenceRequest",
+    "RegisterDeviceRequest",
+    "DeviceResponse",
+    "DeviceListResponse",
 ]

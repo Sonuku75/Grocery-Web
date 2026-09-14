@@ -60,6 +60,12 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    reviews = relationship(
+        "Review",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         Index("idx_users_email_active", "email", "is_active"),

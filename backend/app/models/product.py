@@ -52,6 +52,20 @@ class Product(Base, TimestampMixin):
         order_by="ProductImage.sort_order.asc()",
         lazy="selectin",
     )
+    reviews = relationship(
+        "Review",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="Review.created_at.desc()",
+        lazy="selectin",
+    )
+    rating_summary = relationship(
+        "ProductRatingSummary",
+        back_populates="product",
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         Index("idx_products_cat_active_featured", "category_id", "is_active", "is_featured"),

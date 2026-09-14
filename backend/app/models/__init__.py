@@ -26,6 +26,62 @@ from app.models.order import (
     OrderStatusHistory,
     PaymentStatus,
 )
+from app.models.inventory import (
+    Inventory,
+    InventoryTransaction,
+    InventoryTransactionType,
+)
+from app.models.payment import (
+    Payment,
+    PaymentMethod,
+    PaymentProviderType,
+    PaymentRefund,
+    PaymentStatus as PaymentTransactionStatus,
+    PaymentStatusHistory,
+    PaymentWebhookEvent,
+    RefundStatus,
+    WebhookProcessingStatus,
+)
+from app.models.notification import (
+    DeliveryStatus,
+    Notification,
+    NotificationChannel,
+    NotificationDelivery,
+    NotificationPriority,
+    NotificationStatus,
+    NotificationTemplate,
+    NotificationType,
+)
+from app.models.notification_preference import (
+    NotificationCategory,
+    NotificationPreference,
+)
+from app.models.user_device import (
+    DevicePlatform,
+    UserDevice,
+)
+from app.models.notification_outbox import (
+    NotificationOutboxEvent,
+    OutboxStatus,
+)
+from app.models.notification_webhook_event import (
+    NotificationWebhookEvent,
+)
+from app.models.review import (
+    Review,
+    ReviewStatus,
+)
+from app.models.review_helpful_vote import (
+    ReviewHelpfulVote,
+)
+from app.models.review_report import (
+    ReportReason,
+    ReportStatus,
+    ReviewReport,
+)
+from app.models.product_rating_summary import (
+    ProductRatingSummary,
+)
 
 __all__ = [
     "Base",
@@ -55,4 +111,38 @@ __all__ = [
     "OrderStatus",
     "PaymentStatus",
     "FulfillmentStatus",
+    "Inventory",
+    "InventoryTransaction",
+    "InventoryTransactionType",
+    "Payment",
+    "PaymentMethod",
+    "PaymentProviderType",
+    "PaymentRefund",
+    "PaymentTransactionStatus",
+    "PaymentStatusHistory",
+    "PaymentWebhookEvent",
+    "RefundStatus",
+    "WebhookProcessingStatus",
+    "Notification",
+    "NotificationDelivery",
+    "NotificationTemplate",
+    "NotificationType",
+    "NotificationPriority",
+    "NotificationStatus",
+    "NotificationChannel",
+    "DeliveryStatus",
+    "NotificationPreference",
+    "NotificationCategory",
+    "UserDevice",
+    "DevicePlatform",
+    "NotificationOutboxEvent",
+    "OutboxStatus",
+    "NotificationWebhookEvent",
+    "Review",
+    "ReviewStatus",
+    "ReviewHelpfulVote",
+    "ReviewReport",
+    "ReportReason",
+    "ReportStatus",
+    "ProductRatingSummary",
 ]

@@ -16,11 +16,15 @@ import {
   ShoppingBag,
   Plus,
   Minus,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
-import { Product, ProductVariant } from "@/types";
+import { Product, ProductVariant, CustomerInventoryResponse } from "@/types";
 import { productService } from "@/services/productService";
+import { inventoryService } from "@/services/inventoryService";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { VariantSelector } from "@/components/products/VariantSelector";
+import { ProductReviews } from "@/components/products/ProductReviews";
 import { Rating } from "@/components/common/Rating";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -43,10 +47,26 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"description" | "specifications">("description");
+  const [stockInfo, setStockInfo] = useState<CustomerInventoryResponse | null>(null);
+  const [loadingStock, setLoadingStock] = useState<boolean>(false);
 
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { cart, addToCart, updateQuantity, setIsCartDrawerOpen } = useCart();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const variantId = selectedVariant?.id;
+    if (variantId) {
+      setLoadingStock(true);
+      inventoryService
+        .getVariantStock(variantId)
+        .then((res) => setStockInfo(res))
+        .catch(() => setStockInfo(null))
+        .finally(() => setLoadingStock(false));
+    } else {
+      setStockInfo(null);
+    }
+  }, [selectedVariant?.id]);
 
   useEffect(() => {
     async function loadProduct() {
@@ -223,6 +243,41 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
             </p>
           </div>
 
+          {/* Live Inventory Stock Badge */}
+          {(() => {
+            const isOutOfStock =
+              (stockInfo !== null && (!stockInfo.isAvailable || stockInfo.availableQuantity <= 0)) ||
+              selectedVariant?.isOutOfStock ||
+              product?.inStock === false;
+
+            const isLowStock =
+              !isOutOfStock &&
+              (stockInfo?.isLowStock || (stockInfo !== null && stockInfo.availableQuantity <= 5));
+
+            const availableStock = stockInfo?.availableQuantity ?? selectedVariant?.availableQuantity ?? 99;
+
+            return (
+              <div className="flex items-center gap-2">
+                {isOutOfStock ? (
+                  <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-xs">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    Out of Stock
+                  </span>
+                ) : isLowStock ? (
+                  <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-xs">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Only {availableStock} unit{availableStock === 1 ? "" : "s"} left in stock - order soon!
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    In Stock
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Variant Selector */}
           {product.variants && product.variants.length > 0 && (
             <VariantSelector
@@ -241,10 +296,26 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
               : undefined;
             const cartQuantity = cartItem ? cartItem.quantity : 0;
 
+            const isOutOfStock =
+              (stockInfo !== null && (!stockInfo.isAvailable || stockInfo.availableQuantity <= 0)) ||
+              selectedVariant?.isOutOfStock ||
+              product?.inStock === false;
+
+            const availableStock = stockInfo?.availableQuantity ?? selectedVariant?.availableQuantity ?? 99;
+
             return (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-3">
-                  {cartQuantity === 0 ? (
+                  {isOutOfStock ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-slate-100 text-slate-400 font-bold text-sm sm:text-base border border-slate-200 cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Out of Stock</span>
+                    </button>
+                  ) : cartQuantity === 0 ? (
                     <button
                       type="button"
                       onClick={() => product && addToCart(product, 1, selectedVariant || undefined)}
@@ -269,8 +340,17 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
                         </span>
                         <button
                           type="button"
-                          onClick={() => cartItem && updateQuantity(cartItem.id, cartQuantity + 1)}
-                          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-brand-700 active:scale-90 transition-all"
+                          disabled={cartQuantity >= availableStock}
+                          onClick={() => {
+                            if (cartQuantity >= availableStock) {
+                              showToast(`Only ${availableStock} units available in stock.`, "error");
+                              return;
+                            }
+                            if (cartItem) updateQuantity(cartItem.id, cartQuantity + 1);
+                          }}
+                          className={`w-9 h-9 flex items-center justify-center rounded-xl active:scale-90 transition-all ${
+                            cartQuantity >= availableStock ? "opacity-50 cursor-not-allowed" : "hover:bg-brand-700"
+                          }`}
                           aria-label="Increase quantity"
                         >
                           <Plus className="w-4 h-4" />
@@ -393,6 +473,15 @@ export default function ProductSlugPage({ params }: ProductSlugPageProps) {
             </dl>
           </div>
         )}
+      </div>
+
+      {/* Product Reviews & Ratings Section */}
+      <div className="pt-10 border-t border-slate-200">
+        <ProductReviews
+          productId={product.id}
+          initialRating={product.rating}
+          initialRatingCount={product.ratingCount}
+        />
       </div>
     </div>
   );

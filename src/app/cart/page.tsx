@@ -300,14 +300,32 @@ export default function CartPage() {
                     <span className="text-base font-black text-slate-900">
                       {formatCurrency(rowTotal)}
                     </span>
-                    <QuantitySelector
-                      quantity={item.quantity}
-                      min={1}
-                      max={99}
-                      onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
-                      onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
-                      size="sm"
-                    />
+                    {(() => {
+                      const stock = item.variant?.stockQuantity ?? item.variant?.stock_quantity ?? 99;
+                      const isOutOfStock = stock <= 0;
+                      const isLowStock = stock > 0 && stock <= 5;
+                      return (
+                        <div className="flex flex-col items-end gap-1">
+                          <QuantitySelector
+                            quantity={item.quantity}
+                            min={1}
+                            max={Math.max(1, stock)}
+                            onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
+                            onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
+                            size="sm"
+                          />
+                          {isOutOfStock ? (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
+                              Out of Stock
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                              Only {stock} left
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );

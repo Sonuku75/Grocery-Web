@@ -4,13 +4,14 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Address, CheckoutConfirmResponse, CheckoutSummary } from "@/types";
+import { Address, CheckoutConfirmResponse, CheckoutSummary, PaymentMethod } from "@/types";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { addressService } from "@/services/addressService";
 import { checkoutService } from "@/services/checkoutService";
 import { orderService } from "@/services/orderService";
+import { paymentService } from "@/services/paymentService";
 import { AddressModal } from "@/components/addresses/AddressModal";
 import { Button } from "@/components/common/Button";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
@@ -32,6 +33,11 @@ import {
   ShoppingBag,
   RefreshCw,
   Copy,
+  CreditCard,
+  QrCode,
+  Building2,
+  Wallet,
+  Banknote,
 } from "lucide-react";
 
 const DELIVERY_SLOTS = [
@@ -78,6 +84,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [deliverySlot, setDeliverySlot] = useState("Today • Express 15-Minute Delivery");
   const [notes, setNotes] = useState("");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("UPI");
 
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSwitchAddressOpen, setIsSwitchAddressOpen] = useState(false);
@@ -211,7 +218,7 @@ export default function CheckoutPage() {
 
       setConfirmedData(result);
 
-      // Module 10: Seamlessly convert confirmed checkout session to an authoritative Order
+      // Module 10 & 12: Seamlessly convert confirmed checkout session to an Order and initiate Payment
       try {
         const placedOrder = await orderService.createOrder(
           {
@@ -223,9 +230,30 @@ export default function CheckoutPage() {
         if (refreshCart) {
           await refreshCart();
         }
-        showToast(`Order #${placedOrder.orderNumber} placed successfully!`, "success");
-        router.push(`/orders/${placedOrder.orderNumber || placedOrder.id}`);
-        return;
+
+        // Module 12: High-security payment initiation
+        try {
+          const paymentRes = await paymentService.initiatePayment({
+            orderId: placedOrder.id,
+            paymentMethod: selectedPaymentMethod,
+            provider: "mock",
+          });
+
+          if (selectedPaymentMethod === "COD") {
+            showToast(`Order #${placedOrder.orderNumber} placed with Cash on Delivery!`, "success");
+            router.push(`/orders/${placedOrder.orderNumber || placedOrder.id}`);
+            return;
+          } else {
+            showToast("Order placed! Connecting to payment gateway...", "info");
+            router.push(`/payment?orderId=${placedOrder.id}&paymentId=${paymentRes.paymentId}`);
+            return;
+          }
+        } catch (payErr: any) {
+          console.warn("Payment initiation fallback:", payErr);
+          showToast(`Order #${placedOrder.orderNumber} placed! Proceeding to payment...`, "success");
+          router.push(`/payment?orderId=${placedOrder.id}`);
+          return;
+        }
       } catch (orderErr: any) {
         console.warn("Direct order routing fallback:", orderErr);
         showToast("Checkout locked! Click below to view and track your order.", "success");
@@ -667,6 +695,100 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* 4. Payment Method Selection (Module 12) */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                  4
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                    Payment Method
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Select how you want to pay • 256-bit SSL encrypted
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  {
+                    id: "UPI" as PaymentMethod,
+                    title: "UPI / QR Code",
+                    description: "Google Pay, PhonePe, Paytm, BHIM",
+                    icon: QrCode,
+                    badge: "Fastest",
+                  },
+                  {
+                    id: "CARD" as PaymentMethod,
+                    title: "Credit / Debit Card",
+                    description: "Visa, Mastercard, RuPay",
+                    icon: CreditCard,
+                    badge: null,
+                  },
+                  {
+                    id: "NET_BANKING" as PaymentMethod,
+                    title: "Net Banking",
+                    description: "SBI, HDFC, ICICI, Axis & more",
+                    icon: Building2,
+                    badge: null,
+                  },
+                  {
+                    id: "WALLET" as PaymentMethod,
+                    title: "Wallets",
+                    description: "Amazon Pay, Mobikwik & more",
+                    icon: Wallet,
+                    badge: null,
+                  },
+                  {
+                    id: "COD" as PaymentMethod,
+                    title: "Cash on Delivery",
+                    description: "Pay cash at your doorstep",
+                    icon: Banknote,
+                    badge: "Zero Extra Fee",
+                  },
+                ].map((pm) => {
+                  const Icon = pm.icon;
+                  const isSelected = selectedPaymentMethod === pm.id;
+                  return (
+                    <div
+                      key={pm.id}
+                      onClick={() => setSelectedPaymentMethod(pm.id)}
+                      className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/20 ring-1 ring-emerald-600"
+                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <Icon
+                            className={`w-4 h-4 ${
+                              isSelected
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-slate-500"
+                            }`}
+                          />
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            {pm.title}
+                          </span>
+                        </div>
+                        {pm.badge && (
+                          <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                            {pm.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {pm.description}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

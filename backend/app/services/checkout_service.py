@@ -160,12 +160,32 @@ class CheckoutService:
             variant = cart_item.variant
             product = cart_item.product
             if not variant or not variant.is_active:
-                prod_title = product.title if product else "An item in your cart"
+                prod_title = getattr(product, "name", None) or getattr(product, "title", None) or "An item in your cart"
                 raise CartifyException(
                     status_code=400,
                     message=f"'{prod_title}' is currently unavailable. Please remove it to proceed.",
                     code="ITEM_UNAVAILABLE",
                 )
+
+            # Live stock check
+            from app.services.inventory_service import InventoryService
+            is_sufficient, avail_qty, msg = await InventoryService.check_stock(
+                db, variant.id, cart_item.quantity
+            )
+            if not is_sufficient:
+                prod_title = getattr(product, "name", None) or getattr(product, "title", None) or "Product"
+                if avail_qty <= 0:
+                    raise CartifyException(
+                        status_code=400,
+                        message=f"'{prod_title}' is currently out of stock.",
+                        code="OUT_OF_STOCK",
+                    )
+                else:
+                    raise CartifyException(
+                        status_code=400,
+                        message=f"Insufficient stock for '{prod_title}'. Only {avail_qty} available, requested {cart_item.quantity}.",
+                        code="INSUFFICIENT_STOCK",
+                    )
 
             current_price = Decimal(str(variant.price)).quantize(Decimal("0.01"))
             if variant.id in old_prices and old_prices[variant.id] != current_price:

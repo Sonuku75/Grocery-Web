@@ -47,8 +47,9 @@ class ProductVariant(Base, TimestampMixin):
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     sort_order = Column(Integer, default=0, nullable=False)
 
-    # Relationship
+    # Relationships
     product = relationship("Product", back_populates="variants")
+    inventory = relationship("Inventory", back_populates="variant", uselist=False, cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("price >= 0", name="chk_variant_price_non_negative"),

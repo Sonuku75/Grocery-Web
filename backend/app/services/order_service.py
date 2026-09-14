@@ -371,12 +371,38 @@ class OrderService:
                 "thumbnail_url": it.get("thumbnail_url") or it.get("thumbnailUrl"),
             })
 
-        # 9. Atomic Transaction: Persist Order, Items, and Initial Status History
+        # 9. Deduct Inventory Stock (Atomic Row-Locking & Audit Trail)
+        from app.services.inventory_service import InventoryService
+        await InventoryService.deduct_stock_for_order(
+            db=db,
+            items=items_dict_list,
+            order_number=order_number,
+            user_id=user_id,
+        )
+
+        # 10. Atomic Transaction: Persist Order, Items, and Initial Status History
         created_order = await OrderRepository.create_order(
             db=db,
             order_data=order_dict,
             items_data=items_dict_list,
             initial_reason="Order created from checkout session",
+        )
+
+        # Emit Outbox Event for atomic notification delivery
+        from app.services.notification_service import NotificationService
+        await NotificationService.emit_outbox_event(
+            db=db,
+            event_type="ORDER_CREATED",
+            aggregate_type="ORDER",
+            aggregate_id=created_order.id,
+            user_id=user_id,
+            payload={
+                "order_id": created_order.id,
+                "order_number": created_order.order_number,
+                "total_amount": str(created_order.total_amount),
+                "item_count": len(items_dict_list),
+                "user_id": user_id,
+            },
         )
 
         # 10. Mark CheckoutSession as COMPLETED
@@ -474,6 +500,19 @@ class OrderService:
 
         reason = cancel_in.reason if cancel_in and cancel_in.reason else "Cancelled by customer"
 
+        # Restore inventory stock for cancelled order items
+        from app.services.inventory_service import InventoryService
+        items_dict = [
+            {"variant_id": it.variant_id, "quantity": it.quantity}
+            for it in (order.items or [])
+        ]
+        await InventoryService.restore_stock_for_cancelled_order(
+            db=db,
+            items=items_dict,
+            order_number=order.order_number,
+            user_id=user_id,
+        )
+
         updated = await OrderRepository.update_status(
             db=db,
             order=order,
@@ -482,6 +521,22 @@ class OrderService:
             reason=reason,
             fulfillment_status=FulfillmentStatus.CANCELLED.value,
         )
+
+        from app.services.notification_service import NotificationService
+        await NotificationService.emit_outbox_event(
+            db=db,
+            event_type="ORDER_CANCELLED",
+            aggregate_type="ORDER",
+            aggregate_id=order.id,
+            user_id=user_id,
+            payload={
+                "order_id": order.id,
+                "order_number": order.order_number,
+                "reason": reason,
+                "user_id": user_id,
+            },
+        )
+
         return cls._format_order_detail(updated)
 
     @classmethod
@@ -553,6 +608,20 @@ class OrderService:
                 code="INVALID_STATUS_TRANSITION",
             )
 
+        # Restore inventory stock if transitioning to CANCELLED
+        if target_status == OrderStatus.CANCELLED and curr_status != OrderStatus.CANCELLED:
+            from app.services.inventory_service import InventoryService
+            items_dict = [
+                {"variant_id": it.variant_id, "quantity": it.quantity}
+                for it in (order.items or [])
+            ]
+            await InventoryService.restore_stock_for_cancelled_order(
+                db=db,
+                items=items_dict,
+                order_number=order.order_number,
+                user_id=admin_user.id,
+            )
+
         fulfillment_val = update_in.fulfillment_status.value if update_in.fulfillment_status else None
 
         updated = await OrderRepository.update_status(
@@ -563,4 +632,28 @@ class OrderService:
             reason=update_in.reason or f"Status updated to {target_status.value} by admin",
             fulfillment_status=fulfillment_val,
         )
+
+        if target_status != curr_status:
+            from app.services.notification_service import NotificationService
+            event_mapping = {
+                OrderStatus.CONFIRMED: "ORDER_CONFIRMED",
+                OrderStatus.SHIPPED: "ORDER_SHIPPED",
+                OrderStatus.DELIVERED: "ORDER_DELIVERED",
+                OrderStatus.CANCELLED: "ORDER_CANCELLED",
+            }
+            if target_status in event_mapping:
+                await NotificationService.emit_outbox_event(
+                    db=db,
+                    event_type=event_mapping[target_status],
+                    aggregate_type="ORDER",
+                    aggregate_id=order.id,
+                    user_id=order.user_id,
+                    payload={
+                        "order_id": order.id,
+                        "order_number": order.order_number,
+                        "status": target_status.value,
+                        "user_id": order.user_id,
+                    },
+                )
+
         return cls._format_order_detail(updated)

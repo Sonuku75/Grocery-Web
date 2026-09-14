@@ -11,6 +11,14 @@ from app.services.delivery_fee_service import DeliveryFeeService
 from app.services.pricing_service import PricingService
 from app.services.checkout_service import CheckoutService
 from app.services.order_service import OrderService
+from app.services.inventory_service import InventoryService
+from app.services.notification_service import NotificationService
+from app.services.notification_preference_service import NotificationPreferenceService
+from app.services.notification_template_service import NotificationTemplateService
+from app.services.review_service import ReviewService
+from app.services.review_eligibility_service import ReviewEligibilityService
+from app.services.review_moderation_service import ReviewModerationService
+from app.services.review_aggregation_service import ReviewAggregationService
 
 __all__ = [
     "AuthService",
@@ -22,5 +30,14 @@ __all__ = [
     "PricingService",
     "CheckoutService",
     "OrderService",
+    "InventoryService",
+    "NotificationService",
+    "NotificationPreferenceService",
+    "NotificationTemplateService",
+    "ReviewService",
+    "ReviewEligibilityService",
+    "ReviewModerationService",
+    "ReviewAggregationService",
 ]
+
 

@@ -49,6 +49,12 @@ class CartService:
         unit_price = Decimal(str(item.variant.price)).quantize(Decimal("0.01"))
         line_total = (unit_price * item.quantity).quantize(Decimal("0.01"))
 
+        stock_quantity = 99
+        if getattr(item.variant, "inventory", None) is not None:
+            stock_quantity = item.variant.inventory.available_quantity
+        elif not item.variant.is_active:
+            stock_quantity = 0
+
         variant_summary = CartVariantSummary(
             id=item.variant.id,
             product_id=item.variant.product_id,
@@ -57,7 +63,7 @@ class CartService:
             unit=f"{item.variant.unit_value} {item.variant.unit_type}".strip(),
             price=unit_price,
             mrp=Decimal(str(item.variant.mrp)).quantize(Decimal("0.01")) if item.variant.mrp is not None else None,
-            stock_quantity=99 if item.variant.is_active else 0,
+            stock_quantity=stock_quantity,
             is_active=item.variant.is_active,
         )
 
@@ -263,9 +269,26 @@ class CartService:
         cart = await CartRepository.get_by_user_id(db, user_id, create_if_missing=True)
 
         existing_item = await CartRepository.get_item_by_cart_and_variant(db, cart.id, variant.id)
+        target_qty = min(existing_item.quantity + quantity, 99) if existing_item else min(quantity, 99)
+
+        from app.services.inventory_service import InventoryService
+        is_sufficient, avail_qty, msg = await InventoryService.check_stock(db, variant.id, target_qty)
+        if not is_sufficient:
+            if avail_qty <= 0:
+                raise CartifyException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message=f"'{variant.name}' is currently out of stock.",
+                    code="OUT_OF_STOCK",
+                )
+            else:
+                raise CartifyException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message=f"Only {avail_qty} units of '{variant.name}' are available.",
+                    code="INSUFFICIENT_STOCK",
+                )
+
         if existing_item:
-            new_qty = min(existing_item.quantity + quantity, 99)
-            await CartRepository.update_item_quantity(db, existing_item, new_qty)
+            await CartRepository.update_item_quantity(db, existing_item, target_qty)
             await db.commit()
         else:
             try:
@@ -275,7 +298,7 @@ class CartService:
                         cart_id=cart.id,
                         product_id=product.id,
                         variant_id=variant.id,
-                        quantity=min(quantity, 99),
+                        quantity=target_qty,
                     )
                 await db.commit()
             except IntegrityError:
@@ -324,6 +347,23 @@ class CartService:
 
         if not item.cart or item.cart.user_id != user_id:
             raise ForbiddenError("You do not have permission to modify this cart item.")
+
+        from app.services.inventory_service import InventoryService
+        is_sufficient, avail_qty, msg = await InventoryService.check_stock(db, item.variant_id, quantity)
+        if not is_sufficient:
+            var_name = item.variant.name if item.variant else "Item"
+            if avail_qty <= 0:
+                raise CartifyException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message=f"'{var_name}' is currently out of stock.",
+                    code="OUT_OF_STOCK",
+                )
+            else:
+                raise CartifyException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message=f"Only {avail_qty} units of '{var_name}' are available.",
+                    code="INSUFFICIENT_STOCK",
+                )
 
         await CartRepository.update_item_quantity(db, item, quantity)
         await db.commit()

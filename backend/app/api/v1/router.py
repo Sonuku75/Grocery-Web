@@ -17,16 +17,27 @@ from app.api.v1.endpoints import (
     addresses,
     admin_categories,
     admin_coupons,
+    admin_inventory,
+    admin_notifications,
     admin_orders,
+    admin_payments,
     admin_products,
     auth,
     cart,
     categories,
     checkout,
     coupons,
+    devices,
     health,
+    inventory,
+    notification_preferences,
+    notification_webhooks,
+    notifications,
     orders,
+    payments,
     products,
+    reviews,
+    admin_reviews,
     search,
     users,
     wishlist,
@@ -71,4 +82,24 @@ api_router.include_router(checkout.router)
 # Module 10: Orders & Order Management
 api_router.include_router(orders.router)
 api_router.include_router(admin_orders.router)
+
+# Module 11: Inventory Management
+api_router.include_router(inventory.router)
+api_router.include_router(admin_inventory.router)
+
+# Module 12: Payments & High-Security Payment Infrastructure
+api_router.include_router(payments.router)
+api_router.include_router(admin_payments.router)
+
+# Module 13: Notifications & Notification Infrastructure
+api_router.include_router(notifications.router)
+api_router.include_router(notification_preferences.router)
+api_router.include_router(devices.router)
+api_router.include_router(notification_webhooks.router)
+api_router.include_router(admin_notifications.router)
+
+# Module 14: Reviews & Ratings (High-Security Architecture)
+api_router.include_router(reviews.router)
+api_router.include_router(admin_reviews.router)
+
 

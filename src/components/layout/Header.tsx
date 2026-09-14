@@ -20,6 +20,8 @@ import {
   MapPinned,
   Loader2,
   ArrowLeft,
+  Bell,
+  Sliders,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -29,6 +31,7 @@ import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "@/lib/mockData";
 import { Category, SearchSuggestion } from "@/types";
 import { categoryService } from "@/services/categoryService";
 import { searchService } from "@/services/searchService";
+import { notificationService } from "@/services/notificationService";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export function Header() {
@@ -49,6 +52,7 @@ export function Header() {
   const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
   const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false);
   const [navCategories, setNavCategories] = useState<Category[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,6 +68,25 @@ export function Header() {
       })
       .catch(() => {});
   }, []);
+
+  // Poll unread notification counter for authenticated customer
+  useEffect(() => {
+    if (isAuthenticated) {
+      notificationService
+        .getUnreadCount()
+        .then((count) => setUnreadNotifications(count))
+        .catch(() => {});
+      const interval = setInterval(() => {
+        notificationService
+          .getUnreadCount()
+          .then((count) => setUnreadNotifications(count))
+          .catch(() => {});
+      }, 45000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadNotifications(0);
+    }
+  }, [isAuthenticated]);
 
   // Debounced search suggestion loading (300ms)
   useEffect(() => {
@@ -455,6 +478,20 @@ export function Header() {
               )}
             </Link>
 
+            {/* Notification Bell Icon */}
+            <Link
+              href="/notifications"
+              className="relative p-2 sm:p-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-brand-600 transition-colors"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-brand-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              )}
+            </Link>
+
             {/* User Profile / Auth Button & Dropdown */}
             <div ref={userDropdownRef} className="relative">
               <button
@@ -499,6 +536,29 @@ export function Header() {
                   >
                     <PackageCheck className="w-4 h-4 text-slate-400" />
                     <span>My Orders</span>
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    onClick={() => setIsUserDropdownOpen(false)}
+                    className="flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-700 rounded-xl hover:bg-slate-50"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Bell className="w-4 h-4 text-slate-400" />
+                      <span>Notifications</span>
+                    </div>
+                    {unreadNotifications > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-brand-500 text-white text-[10px] font-bold">
+                        {unreadNotifications}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/account/notifications"
+                    onClick={() => setIsUserDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 rounded-xl hover:bg-slate-50"
+                  >
+                    <Sliders className="w-4 h-4 text-slate-400" />
+                    <span>Notification Settings</span>
                   </Link>
                   <Link
                     href="/addresses"
@@ -684,6 +744,29 @@ export function Header() {
               className="block px-3 py-2 rounded-lg hover:bg-slate-50"
             >
               My Orders
+            </Link>
+            <Link
+              href="/notifications"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50"
+            >
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-slate-500" />
+                <span>Notifications</span>
+              </div>
+              {unreadNotifications > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
+                  {unreadNotifications}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/account/notifications"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-600 text-sm"
+            >
+              <Sliders className="w-4 h-4 text-slate-400" />
+              <span>Notification Preferences</span>
             </Link>
             <Link
               href={isAuthenticated ? "/profile" : "/login"}

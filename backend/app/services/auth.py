@@ -97,6 +97,20 @@ class AuthService:
             expires_at=expires_at,
         )
 
+        from app.services.notification_service import NotificationService
+        await NotificationService.emit_outbox_event(
+            db=db,
+            event_type="SECURITY_ALERTS",
+            aggregate_type="USER",
+            aggregate_id=user.id,
+            user_id=user.id,
+            payload={
+                "user_id": user.id,
+                "email": user.email,
+                "activity_description": "Account registered successfully",
+            },
+        )
+
         user_resp = UserResponse.model_validate(user)
         token_resp = TokenResponse(
             access_token=access_token,
@@ -256,6 +270,20 @@ class AuthService:
             expires_at=expires_at,
         )
 
+        from app.services.notification_service import NotificationService
+        await NotificationService.emit_outbox_event(
+            db=db,
+            event_type="PASSWORD_RESET",
+            aggregate_type="USER",
+            aggregate_id=user.id,
+            user_id=user.id,
+            payload={
+                "user_id": user.id,
+                "email": user.email,
+                "reset_code": "RESET_REQUESTED",
+            },
+        )
+
         logger.info(f"Password reset token generated for user {user.id}")
         return raw_token
 
@@ -290,6 +318,21 @@ class AuthService:
 
         # Update password hash
         user.password_hash = get_password_hash(new_password)
+
+        from app.services.notification_service import NotificationService
+        await NotificationService.emit_outbox_event(
+            db=db,
+            event_type="SECURITY_ALERTS",
+            aggregate_type="USER",
+            aggregate_id=user.id,
+            user_id=user.id,
+            payload={
+                "user_id": user.id,
+                "email": user.email,
+                "activity_description": "Password was reset successfully",
+            },
+        )
+
         await db.commit()
 
         # Invalidate all active sessions for security

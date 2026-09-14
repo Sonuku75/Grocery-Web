@@ -1,5 +1,5 @@
 import os
-from typing import List, Union
+from typing import List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -95,6 +95,36 @@ class Settings(BaseSettings):
     FREE_DELIVERY_THRESHOLD: float = float(os.getenv("FREE_DELIVERY_THRESHOLD", "499.0"))
     STANDARD_DELIVERY_FEE: float = float(os.getenv("STANDARD_DELIVERY_FEE", "40.0"))
     CHECKOUT_SESSION_EXPIRE_MINUTES: int = int(os.getenv("CHECKOUT_SESSION_EXPIRE_MINUTES", "30"))
+
+    # Module 12 Payments & High-Security Payment Infrastructure
+    PAYMENT_PROVIDER_DEFAULT: str = os.getenv("PAYMENT_PROVIDER_DEFAULT", "mock")
+    RAZORPAY_KEY_ID: Optional[str] = os.getenv("RAZORPAY_KEY_ID", None)
+    RAZORPAY_KEY_SECRET: Optional[str] = os.getenv("RAZORPAY_KEY_SECRET", None)
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = os.getenv("RAZORPAY_WEBHOOK_SECRET", None)
+    PAYMENT_WEBHOOK_MAX_BYTES: int = int(os.getenv("PAYMENT_WEBHOOK_MAX_BYTES", "65536"))
+    PAYMENT_EXPIRY_MINUTES: int = int(os.getenv("PAYMENT_EXPIRY_MINUTES", "15"))
+
+    # Module 13 Notifications & Notification Infrastructure
+    NOTIFICATION_EMAIL_PROVIDER: str = os.getenv("NOTIFICATION_EMAIL_PROVIDER", "mock")
+    NOTIFICATION_EMAIL_API_KEY: Optional[str] = os.getenv("NOTIFICATION_EMAIL_API_KEY", None)
+    NOTIFICATION_SMS_PROVIDER: str = os.getenv("NOTIFICATION_SMS_PROVIDER", "mock")
+    NOTIFICATION_SMS_API_KEY: Optional[str] = os.getenv("NOTIFICATION_SMS_API_KEY", None)
+    NOTIFICATION_PUSH_PROVIDER: str = os.getenv("NOTIFICATION_PUSH_PROVIDER", "mock")
+    NOTIFICATION_PUSH_API_KEY: Optional[str] = os.getenv("NOTIFICATION_PUSH_API_KEY", None)
+    NOTIFICATION_WEBHOOK_SECRET: Optional[str] = os.getenv("NOTIFICATION_WEBHOOK_SECRET", "mock_notif_webhook_secret_key")
+    NOTIFICATION_MAX_RETRIES: int = int(os.getenv("NOTIFICATION_MAX_RETRIES", "3"))
+    NOTIFICATION_RETRY_BASE_DELAY: int = int(os.getenv("NOTIFICATION_RETRY_BASE_DELAY", "5"))
+    NOTIFICATION_DEFAULT_EXPIRY_DAYS: int = int(os.getenv("NOTIFICATION_DEFAULT_EXPIRY_DAYS", "90"))
+    NOTIFICATION_PAGE_SIZE_DEFAULT: int = int(os.getenv("NOTIFICATION_PAGE_SIZE_DEFAULT", "20"))
+    NOTIFICATION_PAGE_SIZE_MAX: int = int(os.getenv("NOTIFICATION_PAGE_SIZE_MAX", "50"))
+
+    # Module 14 Reviews & Ratings (High-Security Architecture)
+    REVIEW_PAGE_SIZE_DEFAULT: int = int(os.getenv("REVIEW_PAGE_SIZE_DEFAULT", "20"))
+    REVIEW_PAGE_SIZE_MAX: int = int(os.getenv("REVIEW_PAGE_SIZE_MAX", "50"))
+    REVIEW_MODERATION_AUTO_PUBLISH: bool = os.getenv("REVIEW_MODERATION_AUTO_PUBLISH", "true").lower() == "true"
+    RATE_LIMIT_REVIEW_CREATE: int = int(os.getenv("RATE_LIMIT_REVIEW_CREATE", "10"))
+    RATE_LIMIT_REVIEW_VOTE: int = int(os.getenv("RATE_LIMIT_REVIEW_VOTE", "30"))
+    RATE_LIMIT_REVIEW_REPORT: int = int(os.getenv("RATE_LIMIT_REVIEW_REPORT", "5"))
 
 settings = Settings()
 

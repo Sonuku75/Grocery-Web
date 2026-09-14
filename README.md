@@ -255,6 +255,76 @@ Core Foundation Endpoints:
 
 ---
 
+### 11.14 Module 14 — Reviews & Ratings Architecture
+
+Module 14 implements an enterprise-grade, high-security e-commerce review and rating system featuring verified purchase validation, transactional aggregations, automated/manual moderation, atomic helpful voting, and anti-abuse mechanisms.
+
+#### 1. Core Architecture & Purchase Verification
+- **Zero Fake Reviews**: Reviews are strictly restricted to authenticated users who purchased the specific product in an order with status `DELIVERED`.
+- **Server-Authoritative Verification**: `is_verified_purchase` is derived entirely on the backend by inspecting order line items; client payloads attempting to set this flag are rejected (`extra="forbid"`).
+- **Line-Item Uniqueness**: Enforced via PostgreSQL unique constraint `uq_reviews_order_item` on `(order_item_id)`. A customer can review each purchased line item exactly once.
+
+#### 2. Review Lifecycle State Machine
+```
+   [Customer Submits]
+           │
+           ▼
+     ┌───────────┐
+     │  PENDING  │ ── (Auto-publish enabled or Admin Approves) ──► ┌───────────┐
+     └─────┬─────┘                                                │ PUBLISHED │ ◄──┐
+           │                                                      └─────┬─────┘    │
+           │ (Admin Rejects)                                            │          │
+           ▼                                               (Report Abuse│          │ (Admin Restores)
+     ┌───────────┐                                          or Flagged) │          │
+     │  REJECTED │                                                      ▼          │
+     └───────────┘                                                ┌───────────┐    │
+                                                                  │  HIDDEN   │ ───┘
+                                                                  └─────┬─────┘
+                                                                        │ (Admin/User Deletes)
+                                                                        ▼
+                                                                  ┌───────────┐
+                                                                  │  DELETED  │
+                                                                  └───────────┘
+```
+- **Outbox Domain Events**: Every lifecycle transition reliably records events in the transactional outbox table:
+  - `REVIEW_SUBMITTED`: Fired when a customer posts a review.
+  - `REVIEW_REPORTED`: Fired when an abuse report is filed against a review.
+  - `REVIEW_MODERATED`: Fired when an admin approves, rejects, hides, or restores a review.
+
+#### 3. Real-Time Rating Aggregation
+- **Authoritative Aggregates**: Maintained in the `product_rating_summaries` table containing `average_rating` (numeric 3,2), `total_reviews`, and `rating_1_count` through `rating_5_count`.
+- **Transactional Consistency**: Recalculated atomically over all active, non-deleted reviews with status `PUBLISHED`.
+- **Cache Invalidation**: Mutations trigger immediate invalidation of Redis keys `review:summary:<product_id>` and `reviews:<product_id>:*`.
+
+#### 4. Helpful Voting & Abuse Reporting
+- **Atomic Helpful Toggles**: `ReviewHelpfulVote` table enforces uniqueness on `(review_id, user_id)`. Toggling updates the cached `helpful_count` on the review table atomically. Self-voting is rejected (HTTP 400).
+- **Abuse Reporting**: Customers can report reviews under reasons: `SPAM`, `HARASSMENT`, `INAPPROPRIATE_CONTENT`, `FAKE_REVIEW`, or `OTHER`. Repeated reports from the same user or IP are throttled.
+
+#### 5. Security & Input Sanitization
+- **Strict Validation**: Ratings must be integers between 1 and 5. Titles (max 120 chars) and comments (min 10, max 2000 chars) are stripped of HTML tags and control characters.
+- **XSS Prevention**: Frontend renders user text using native React text nodes only; `dangerouslySetInnerHTML` is forbidden.
+- **Privacy Masking**: Reviewer names are masked in public responses (e.g., `Deepak K.` or `Anonymous Customer`).
+- **IDOR Protection**: Edit and delete operations verify author ownership (`user_id == current_user.id`) or admin privileges.
+
+#### 6. API Endpoints Reference
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/products/{id}/reviews` | Public | List published reviews (cursor/offset, rating filter, sort) |
+| `GET` | `/api/v1/products/{id}/ratings/summary` | Public | Get aggregate rating and star distribution breakdown |
+| `GET` | `/api/v1/reviews/eligible` | Customer | List delivered order items eligible for review |
+| `POST` | `/api/v1/reviews` | Customer | Submit a new review for a verified delivered order item |
+| `PATCH` | `/api/v1/reviews/{id}` | Customer | Edit review rating, title, and body |
+| `DELETE` | `/api/v1/reviews/{id}` | Customer | Soft-delete own review |
+| `POST` | `/api/v1/reviews/{id}/helpful` | Customer | Toggle helpful vote |
+| `POST` | `/api/v1/reviews/{id}/report` | Customer | Report a review for moderation |
+| `GET` | `/api/v1/admin/reviews/pending` | Admin | List reviews pending moderation |
+| `POST` | `/api/v1/admin/reviews/{id}/moderate` | Admin | Approve, reject, or hide a review |
+| `GET` | `/api/v1/admin/reviews/reports` | Admin | List filed review abuse reports |
+| `POST` | `/api/v1/admin/reviews/reports/{id}/resolve` | Admin | Resolve or dismiss an abuse report |
+
+
+---
+
 ## 12. Testing
 
 ### Running Backend Tests

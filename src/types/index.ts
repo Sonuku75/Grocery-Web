@@ -96,14 +96,73 @@ export interface CategoryInput {
 
 export interface ProductReview {
   id: string;
-  productId: string;
-  userId: string;
-  userName: string;
+  productId?: string;
+  product_id?: string;
+  userId?: string;
+  user_id?: string;
+  userName?: string;
+  reviewerName?: string;
+  reviewer_name?: string;
   userAvatar?: string;
   rating: number;
-  comment: string;
+  title?: string;
+  body?: string;
+  comment?: string;
+  status?: string;
+  isVerifiedPurchase?: boolean;
+  is_verified_purchase?: boolean;
+  helpfulCount?: number;
+  helpful_count?: number;
+  userVotedHelpful?: boolean;
+  user_voted_helpful?: boolean;
+  isOwnReview?: boolean;
+  is_own_review?: boolean;
   createdAt: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
 }
+
+export interface RatingSummary {
+  averageRating: number;
+  average_rating?: number;
+  totalReviews: number;
+  total_reviews?: number;
+  distribution: {
+    "1": number;
+    "2": number;
+    "3": number;
+    "4": number;
+    "5": number;
+    [key: string]: number;
+  };
+}
+
+export interface ReviewableItem {
+  orderItemId: string;
+  order_item_id?: string;
+  orderId: string;
+  order_id?: string;
+  orderNumber: string;
+  order_number?: string;
+  productId: string;
+  product_id?: string;
+  productName: string;
+  product_name?: string;
+  variantName?: string;
+  variant_name?: string;
+  deliveredAt?: string;
+  delivered_at?: string;
+}
+
+export interface ReviewEligibility {
+  canReview: boolean;
+  can_review?: boolean;
+  reason?: string | null;
+  reviewableItems: ReviewableItem[];
+  reviewable_items?: ReviewableItem[];
+}
+
 
 export interface ProductVariant {
   id: string;
@@ -121,6 +180,14 @@ export interface ProductVariant {
   discount_percentage?: number;
   isActive?: boolean;
   is_active?: boolean;
+  availableQuantity?: number;
+  available_quantity?: number;
+  isAvailable?: boolean;
+  is_available?: boolean;
+  isLowStock?: boolean;
+  is_low_stock?: boolean;
+  isOutOfStock?: boolean;
+  is_out_of_stock?: boolean;
   sortOrder?: number;
   sort_order?: number;
   createdAt?: string;
@@ -369,8 +436,12 @@ export type OrderStatus =
 
 export type PaymentStatus =
   | 'PENDING'
+  | 'AUTHORIZED'
   | 'PAID'
   | 'FAILED'
+  | 'CANCELLED'
+  | 'REFUND_PENDING'
+  | 'PARTIALLY_REFUNDED'
   | 'REFUNDED'
   // Legacy lowercase compatibility
   | 'pending'
@@ -385,7 +456,17 @@ export type FulfillmentStatus =
   | 'DELIVERED'
   | 'CANCELLED';
 
-export type PaymentMethod = 'card' | 'upi' | 'netbanking' | 'cod';
+export type PaymentMethod =
+  | 'UPI'
+  | 'CARD'
+  | 'NET_BANKING'
+  | 'WALLET'
+  | 'COD'
+  // Legacy lowercase compatibility
+  | 'card'
+  | 'upi'
+  | 'netbanking'
+  | 'cod';
 
 export interface TrackingStep {
   status: OrderStatus;
@@ -798,3 +879,273 @@ export interface CheckoutConfirmResponse {
   summary: CheckoutSummary;
   message: string;
 }
+
+// =============================================================================
+// Module 11: Inventory Types
+// =============================================================================
+
+export type InventoryTransactionType =
+  | 'INITIAL'
+  | 'RESTOCK'
+  | 'SALE'
+  | 'CANCELLATION'
+  | 'RETURN'
+  | 'DAMAGE'
+  | 'ADJUSTMENT';
+
+export interface CustomerInventoryResponse {
+  variantId: string;
+  variant_id?: string;
+  availableQuantity: number;
+  available_quantity?: number;
+  isAvailable: boolean;
+  is_available?: boolean;
+  isLowStock: boolean;
+  is_low_stock?: boolean;
+}
+
+export interface AdminInventoryResponse {
+  id: string;
+  variantId: string;
+  variant_id?: string;
+  productId?: string;
+  product_id?: string;
+  productTitle?: string;
+  product_title?: string;
+  variantName?: string;
+  variant_name?: string;
+  sku?: string;
+  quantity: number;
+  reservedQuantity: number;
+  reserved_quantity?: number;
+  availableQuantity: number;
+  available_quantity?: number;
+  lowStockThreshold: number;
+  low_stock_threshold?: number;
+  isActive: boolean;
+  is_active?: boolean;
+  isLowStock: boolean;
+  is_low_stock?: boolean;
+  isOutOfStock: boolean;
+  is_out_of_stock?: boolean;
+  createdAt: string;
+  created_at?: string;
+  updatedAt: string;
+  updated_at?: string;
+}
+
+export interface AdminInventoryListResponse {
+  items: AdminInventoryResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface InventoryTransactionResponse {
+  id: string;
+  inventoryId: string;
+  inventory_id?: string;
+  variantId: string;
+  variant_id?: string;
+  transactionType: InventoryTransactionType;
+  transaction_type?: InventoryTransactionType;
+  quantityChange: number;
+  quantity_change?: number;
+  quantityBefore: number;
+  quantity_before?: number;
+  quantityAfter: number;
+  quantity_after?: number;
+  referenceType?: string | null;
+  reference_type?: string | null;
+  referenceId?: string | null;
+  reference_id?: string | null;
+  reason?: string;
+  createdByUserId?: string | null;
+  created_by_user_id?: string | null;
+  createdAt: string;
+  created_at?: string;
+}
+
+export interface AdminAdjustStockPayload {
+  quantityChange: number;
+  quantity_change?: number;
+  transactionType?: InventoryTransactionType;
+  transaction_type?: InventoryTransactionType;
+  reason: string;
+  referenceType?: string;
+  reference_type?: string;
+  referenceId?: string;
+  reference_id?: string;
+}
+
+// Module 12: Payments & High-Security Payment Infrastructure
+export interface Payment {
+  id: string;
+  orderId: string;
+  order_id?: string;
+  userId: string;
+  user_id?: string;
+  provider: string;
+  providerPaymentId?: string | null;
+  provider_payment_id?: string | null;
+  providerOrderId?: string | null;
+  provider_order_id?: string | null;
+  paymentMethod: PaymentMethod;
+  payment_method?: PaymentMethod;
+  amount: number | string;
+  currency: string;
+  status: PaymentStatus;
+  failureCode?: string | null;
+  failure_code?: string | null;
+  failureMessage?: string | null;
+  failure_message?: string | null;
+  paidAt?: string | null;
+  paid_at?: string | null;
+  createdAt: string;
+  created_at?: string;
+}
+
+export interface InitiatePaymentRequest {
+  orderId: string;
+  order_id?: string;
+  paymentMethod: PaymentMethod;
+  payment_method?: PaymentMethod;
+  provider?: string;
+}
+
+export interface InitiatePaymentResponse {
+  paymentId: string;
+  payment_id?: string;
+  orderId: string;
+  order_id?: string;
+  amount: number | string;
+  currency: string;
+  provider: string;
+  providerOrderId?: string | null;
+  provider_order_id?: string | null;
+  paymentMethod: PaymentMethod;
+  payment_method?: PaymentMethod;
+  status: PaymentStatus;
+  clientSecret?: string | null;
+  client_secret?: string | null;
+  gatewayData?: Record<string, any>;
+  gateway_data?: Record<string, any>;
+}
+
+export interface VerifyPaymentRequest {
+  paymentId: string;
+  payment_id?: string;
+  providerPaymentId?: string;
+  provider_payment_id?: string;
+  providerOrderId?: string;
+  provider_order_id?: string;
+  providerSignature?: string;
+  provider_signature?: string;
+}
+
+export interface PaymentRefund {
+  id: string;
+  paymentId: string;
+  payment_id?: string;
+  amount: number | string;
+  currency: string;
+  reason?: string;
+  status: 'PENDING' | 'PROCESSED' | 'FAILED';
+  createdAt: string;
+  created_at?: string;
+}
+
+// ==========================================
+// Module 13: Notifications & Device Types
+// ==========================================
+
+export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'PUSH';
+
+export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export type NotificationStatus = 'UNREAD' | 'READ' | 'EXPIRED';
+
+export type NotificationCategory =
+  | 'ORDER_UPDATES'
+  | 'PAYMENT_UPDATES'
+  | 'PROMOTIONS'
+  | 'SECURITY_ALERTS';
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  user_id?: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  priority: NotificationPriority | string;
+  status: NotificationStatus | string;
+  referenceKey?: string | null;
+  reference_key?: string | null;
+  createdAt: string;
+  created_at?: string;
+  readAt?: string | null;
+  read_at?: string | null;
+  expiresAt?: string | null;
+  expires_at?: string | null;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  total: number;
+  unreadCount: number;
+  unread_count?: number;
+  nextCursor?: string | null;
+  next_cursor?: string | null;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+  unread_count?: number;
+}
+
+export interface NotificationPreferenceItem {
+  category: NotificationCategory | string;
+  channel: NotificationChannel | string;
+  isEnabled: boolean;
+  is_enabled?: boolean;
+  isMandatory: boolean;
+  is_mandatory?: boolean;
+}
+
+export interface NotificationPreferencesResponse {
+  preferences: NotificationPreferenceItem[];
+}
+
+export interface UpdateNotificationPreferenceRequest {
+  category: string;
+  channel: string;
+  isEnabled: boolean;
+}
+
+export interface DeviceItem {
+  id: string;
+  platform: 'WEB' | 'ANDROID' | 'IOS' | string;
+  maskedToken: string;
+  masked_token?: string;
+  appVersion?: string | null;
+  app_version?: string | null;
+  isActive: boolean;
+  is_active?: boolean;
+  lastSeenAt: string;
+  last_seen_at?: string;
+  createdAt: string;
+  created_at?: string;
+}
+
+export interface DeviceListResponse {
+  items: DeviceItem[];
+}
+
+export interface RegisterDeviceRequest {
+  platform: 'WEB' | 'ANDROID' | 'IOS' | string;
+  deviceToken: string;
+  appVersion?: string;
+}
+

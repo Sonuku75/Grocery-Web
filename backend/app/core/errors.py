@@ -59,6 +59,35 @@ class RateLimitExceededError(CartifyException):
             details={"retry_after": retry_after},
         )
 
+class ValidationError(CartifyException):
+    def __init__(self, message: str = "The request payload failed validation.", details: Optional[Any] = None):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=message,
+            code="VALIDATION_ERROR",
+            details=details,
+        )
+
+class ConflictError(CartifyException):
+    def __init__(self, message: str = "A conflict occurred with existing resource state.", details: Optional[Any] = None):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            message=message,
+            code="CONFLICT",
+            details=details,
+        )
+
+class BadRequestError(CartifyException):
+    def __init__(self, message: str = "Bad request.", details: Optional[Any] = None):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=message,
+            code="BAD_REQUEST",
+            details=details,
+        )
+
+AppError = CartifyException
+
 def setup_exception_handlers(app: FastAPI) -> None:
     """
     Registers centralized exception handlers to ensure 100% consistent error responses.
