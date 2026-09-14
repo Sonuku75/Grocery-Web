@@ -119,6 +119,22 @@ from app.schemas.wishlist import (
     WishlistRemoveResponse,
     WishlistResponse,
 )
+from app.schemas.account import (
+    AccountChangePasswordRequest,
+    AccountDeletionCancelResponse,
+    AccountDeletionRequestSchema,
+    AccountDeletionResponse,
+    AccountProfileResponse,
+    AccountSecuritySummaryResponse,
+    InitiateEmailChangeRequest,
+    InitiatePhoneChangeRequest,
+    ProfileUpdateRequest,
+    SecurityEventSummaryResponse,
+    SessionRevokeResponse,
+    UserSessionResponse,
+    VerifyEmailChangeRequest,
+    VerifyPhoneChangeRequest,
+)
 
 __all__ = [
     "AddressCreateRequest",
@@ -212,4 +228,18 @@ __all__ = [
     "RegisterDeviceRequest",
     "DeviceResponse",
     "DeviceListResponse",
+    "ProfileUpdateRequest",
+    "AccountProfileResponse",
+    "UserSessionResponse",
+    "SecurityEventSummaryResponse",
+    "InitiateEmailChangeRequest",
+    "VerifyEmailChangeRequest",
+    "InitiatePhoneChangeRequest",
+    "VerifyPhoneChangeRequest",
+    "AccountDeletionRequestSchema",
+    "AccountDeletionResponse",
+    "AccountChangePasswordRequest",
+    "AccountSecuritySummaryResponse",
+    "SessionRevokeResponse",
+    "AccountDeletionCancelResponse",
 ]

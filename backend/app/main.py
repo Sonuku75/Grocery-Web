@@ -23,6 +23,7 @@ from app.core.logging import logger
 from app.core.redis import ping_redis, redis_client
 from app.db.session import engine_primary, engine_replica, ping_databases
 from app.middleware.request_id import RequestTracingMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,16 +69,26 @@ app = FastAPI(
 # 1. High-Performance Gzip compression for payloads > 1KB
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# 2. Request Tracing, Structured Logging, and Server-side Timeouts
+# 2. Bank-Grade HTTP Security Headers & Cache Control
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Request Tracing, Structured Logging, and Server-side Timeouts
 app.add_middleware(RequestTracingMiddleware)
 
-# 3. Cross-Origin Resource Sharing (CORS)
+# 4. Cross-Origin Resource Sharing (CORS) with Explicit Whitelist
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-Request-ID",
+        "X-Session-ID",
+        "X-Forwarded-For",
+    ],
     expose_headers=["X-Request-ID", "X-Response-Time-Ms"],
 )
 

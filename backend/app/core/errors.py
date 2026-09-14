@@ -27,10 +27,16 @@ class CartifyException(HTTPException):
         self.details = details
 
 class NotFoundError(CartifyException):
-    def __init__(self, resource: str, identifier: Any):
+    def __init__(self, resource: str, identifier: Optional[Any] = None, message: Optional[str] = None):
+        if message is not None:
+            msg = message
+        elif identifier is not None:
+            msg = f"{resource} with identifier '{identifier}' was not found."
+        else:
+            msg = resource
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            message=f"{resource} with identifier '{identifier}' was not found.",
+            message=msg,
             code="RESOURCE_NOT_FOUND",
         )
 

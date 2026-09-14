@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   Bell,
   Sliders,
+  LayoutDashboard,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -521,6 +522,14 @@ export function Header() {
                     <p className="text-xs font-bold text-slate-900">{user?.fullName}</p>
                     <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
                   </div>
+                  <Link
+                    href="/account"
+                    onClick={() => setIsUserDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 rounded-xl hover:bg-slate-50"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-slate-400" />
+                    <span>Account Overview</span>
+                  </Link>
                   <Link
                     href="/profile"
                     onClick={() => setIsUserDropdownOpen(false)}

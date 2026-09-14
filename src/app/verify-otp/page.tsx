@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/common/Button";
 import { ShoppingBag, KeyRound, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
+import { getSafeRedirect } from "@/lib/urlSecurity";
 
 function OtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mobile = searchParams.get("mobile") || "+1 (555) 234-5678";
-  const redirect = searchParams.get("redirect") || "/profile";
+  const redirect = getSafeRedirect(searchParams.get("redirect"), "/profile");
   const { showToast } = useToast();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);

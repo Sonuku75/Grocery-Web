@@ -126,5 +126,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_REVIEW_VOTE: int = int(os.getenv("RATE_LIMIT_REVIEW_VOTE", "30"))
     RATE_LIMIT_REVIEW_REPORT: int = int(os.getenv("RATE_LIMIT_REVIEW_REPORT", "5"))
 
+    # Module 15 Account Security & Privacy Hardening
+    OTP_EXPIRE_MINUTES: int = int(os.getenv("OTP_EXPIRE_MINUTES", "15"))
+    MAX_OTP_ATTEMPTS: int = int(os.getenv("MAX_OTP_ATTEMPTS", "5"))
+    SESSION_LIFETIME_DAYS: int = int(os.getenv("SESSION_LIFETIME_DAYS", "30"))
+    ACCOUNT_DELETION_GRACE_PERIOD_DAYS: int = int(os.getenv("ACCOUNT_DELETION_GRACE_PERIOD_DAYS", "30"))
+
 settings = Settings()
 

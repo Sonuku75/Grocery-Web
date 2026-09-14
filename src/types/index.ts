@@ -1149,3 +1149,117 @@ export interface RegisterDeviceRequest {
   appVersion?: string;
 }
 
+// -----------------------------------------------------------------------------
+// Module 15: Account & Profile Types
+// -----------------------------------------------------------------------------
+
+export interface AccountProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
+  date_of_birth?: string | null;
+  dateOfBirth?: string | null;
+  bio?: string | null;
+  is_verified: boolean;
+  isVerified?: boolean;
+  created_at: string;
+  createdAt?: string;
+  has_pending_deletion: boolean;
+  hasPendingDeletion?: boolean;
+}
+
+export interface AccountProfileUpdatePayload {
+  name?: string;
+  phone?: string;
+  avatar_url?: string;
+  date_of_birth?: string;
+  bio?: string;
+}
+
+export interface AccountSecuritySummary {
+  email_verified: boolean;
+  phone_verified: boolean;
+  active_sessions: number;
+  has_pending_deletion: boolean;
+  last_security_event_at?: string | null;
+  password_last_changed_at?: string | null;
+}
+
+export interface UserSession {
+  id: string;
+  device_name?: string | null;
+  deviceName?: string | null;
+  platform?: string | null;
+  ip_address?: string | null;
+  ipAddress?: string | null;
+  last_seen_at: string;
+  lastSeenAt?: string;
+  created_at: string;
+  createdAt?: string;
+  expires_at: string;
+  expiresAt?: string;
+  is_current: boolean;
+  isCurrent?: boolean;
+}
+
+export interface SecurityEventSummary {
+  id: string;
+  event_type: string;
+  eventType?: string;
+  created_at: string;
+  createdAt?: string;
+  ip_address?: string | null;
+  ipAddress?: string | null;
+  user_agent_summary?: string | null;
+  userAgentSummary?: string | null;
+}
+
+export interface InitiateEmailChangePayload {
+  new_email: string;
+  current_password: string;
+}
+
+export interface VerifyEmailChangePayload {
+  token?: string;
+  verification_code?: string;
+}
+
+export interface InitiatePhoneChangePayload {
+  new_phone: string;
+  current_password: string;
+}
+
+export interface VerifyPhoneChangePayload {
+  token?: string;
+  verification_code?: string;
+}
+
+export interface AccountChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+}
+
+export interface SessionRevokeResponse {
+  revoked_count: number;
+  message: string;
+}
+
+export interface AccountDeletionPayload {
+  current_password: string;
+  reason?: string;
+}
+
+export interface AccountDeletionResponse {
+  id: string;
+  status: string;
+  requested_at: string;
+  scheduled_at: string;
+  grace_period_days: number;
+}
+
+export interface AccountDeletionCancelResponse {
+  message: string;
+}

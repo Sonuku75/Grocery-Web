@@ -18,6 +18,8 @@ import {
   Phone,
   Edit2,
   CheckCircle2,
+  LayoutDashboard,
+  Smartphone,
 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { authService } from "@/services/authService";
@@ -115,6 +117,13 @@ export default function ProfilePage() {
 
           <nav className="space-y-1 text-xs font-semibold text-slate-700">
             <Link
+              href="/account"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <LayoutDashboard className="w-4 h-4 text-slate-400" />
+              <span>Account Overview</span>
+            </Link>
+            <Link
               href="/profile"
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-brand-50 text-brand-700 font-bold"
             >
@@ -141,6 +150,20 @@ export default function ProfilePage() {
             >
               <Heart className="w-4 h-4 text-slate-400" />
               <span>Wishlist & Saved Items</span>
+            </Link>
+            <Link
+              href="/account/security"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <ShieldCheck className="w-4 h-4 text-slate-400" />
+              <span>Security & Credentials</span>
+            </Link>
+            <Link
+              href="/account/sessions"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              <Smartphone className="w-4 h-4 text-slate-400" />
+              <span>Active Sessions</span>
             </Link>
           </nav>
 

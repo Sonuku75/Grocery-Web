@@ -8,11 +8,12 @@ import { Input } from "@/components/common/Input";
 import { Button } from "@/components/common/Button";
 import { ShoppingBag, Lock, Mail, User, Phone, ArrowRight } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
+import { getSafeRedirect } from "@/lib/urlSecurity";
 
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/profile";
+  const redirect = getSafeRedirect(searchParams.get("redirect"), "/profile");
   const { register } = useAuth();
   const { showToast } = useToast();
 

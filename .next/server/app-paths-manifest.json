@@ -1,8 +1,8 @@
 {
-  "/page": "app/page.js",
-  "/cart/page": "app/cart/page.js",
-  "/checkout/page": "app/checkout/page.js",
-  "/payment/page": "app/payment/page.js",
   "/categories/[slug]/page": "app/categories/[slug]/page.js",
-  "/categories/page": "app/categories/page.js"
+  "/page": "app/page.js",
+  "/categories/page": "app/categories/page.js",
+  "/payment/page": "app/payment/page.js",
+  "/checkout/page": "app/checkout/page.js",
+  "/cart/page": "app/cart/page.js"
 }

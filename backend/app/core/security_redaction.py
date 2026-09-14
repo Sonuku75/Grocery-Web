@@ -13,6 +13,9 @@ from typing import Any, Dict, List, Union
 # Sensitive key keywords to redact recursively in dictionaries and logs
 SENSITIVE_FIELD_NAMES = {
     "password",
+    "current_password",
+    "new_password",
+    "password_hash",
     "secret",
     "key_secret",
     "razorpay_key_secret",
@@ -21,6 +24,10 @@ SENSITIVE_FIELD_NAMES = {
     "token",
     "access_token",
     "refresh_token",
+    "cartify_refresh_token",
+    "otp",
+    "verification_code",
+    "code",
     "cvv",
     "cvc",
     "card_number",

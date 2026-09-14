@@ -15,6 +15,7 @@ Mounts all versioned /api/v1 routes:
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     addresses,
+    account,
     admin_categories,
     admin_coupons,
     admin_inventory,
@@ -101,5 +102,9 @@ api_router.include_router(admin_notifications.router)
 # Module 14: Reviews & Ratings (High-Security Architecture)
 api_router.include_router(reviews.router)
 api_router.include_router(admin_reviews.router)
+
+# Module 15.2: Account & Customer Security APIs
+api_router.include_router(account.router)
+
 
 

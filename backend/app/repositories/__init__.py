@@ -22,6 +22,11 @@ from app.repositories.review import ReviewRepository
 from app.repositories.review_helpful_vote import ReviewHelpfulVoteRepository
 from app.repositories.review_report import ReviewReportRepository
 from app.repositories.product_rating_summary import ProductRatingSummaryRepository
+from app.repositories.user_profile import UserProfileRepository
+from app.repositories.account_security_event import AccountSecurityEventRepository
+from app.repositories.user_session import UserSessionRepository
+from app.repositories.account_deletion import AccountDeletionRepository
+from app.repositories.account_change_request import AccountChangeRequestRepository
 
 __all__ = [
     "UserRepository",
@@ -43,6 +48,11 @@ __all__ = [
     "ReviewHelpfulVoteRepository",
     "ReviewReportRepository",
     "ProductRatingSummaryRepository",
+    "UserProfileRepository",
+    "AccountSecurityEventRepository",
+    "UserSessionRepository",
+    "AccountDeletionRepository",
+    "AccountChangeRequestRepository",
 ]
 
 

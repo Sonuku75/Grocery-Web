@@ -19,6 +19,11 @@ from app.services.review_service import ReviewService
 from app.services.review_eligibility_service import ReviewEligibilityService
 from app.services.review_moderation_service import ReviewModerationService
 from app.services.review_aggregation_service import ReviewAggregationService
+from app.services.security_event_service import SecurityEventService
+from app.services.profile_service import ProfileService
+from app.services.session_service import SessionService
+from app.services.account_deletion_service import AccountDeletionService
+from app.services.account_service import AccountService
 
 __all__ = [
     "AuthService",
@@ -38,6 +43,11 @@ __all__ = [
     "ReviewEligibilityService",
     "ReviewModerationService",
     "ReviewAggregationService",
+    "SecurityEventService",
+    "ProfileService",
+    "SessionService",
+    "AccountDeletionService",
+    "AccountService",
 ]
 
 

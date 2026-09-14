@@ -82,6 +82,24 @@ from app.models.review_report import (
 from app.models.product_rating_summary import (
     ProductRatingSummary,
 )
+from app.models.user_profile import (
+    UserProfile,
+)
+from app.models.account_security_event import (
+    AccountSecurityEvent,
+    AccountSecurityEventType,
+)
+from app.models.user_session import (
+    UserSession,
+)
+from app.models.account_deletion import (
+    AccountDeletionRequest,
+    AccountDeletionStatus,
+)
+from app.models.account_change_request import (
+    AccountChangeRequest,
+    ChangeType,
+)
 
 __all__ = [
     "Base",
@@ -145,4 +163,12 @@ __all__ = [
     "ReportReason",
     "ReportStatus",
     "ProductRatingSummary",
+    "UserProfile",
+    "AccountSecurityEvent",
+    "AccountSecurityEventType",
+    "UserSession",
+    "AccountDeletionRequest",
+    "AccountDeletionStatus",
+    "AccountChangeRequest",
+    "ChangeType",
 ]
